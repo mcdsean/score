@@ -291,6 +291,7 @@ def get_data(src_path, dest_path):
 def auto_score(xml_path, cwe_no):
     # todo: make more generic and cleanup
 
+    juliet_f_tc_type = False
     i = 0
     ns = {}
     opps_per_test_case = {}
@@ -330,9 +331,8 @@ def auto_score(xml_path, cwe_no):
     for w_id in weakness_id_schemas:
         weakness_id_schemas[i] = "ns1:" + w_id.replace("/", "/ns1:")
         i += 1
-    file_line = 'ns1:AnalysisInfo/ns1:Unified/ns1:Context/ns1:FunctionDeclarationSourceLocation/ns1:line'
 
-    # get acceptabe weakness ids
+    # get acceptable weakness ids
     acceptable_weaknesses = get_weakness_ids(cwe_no)
 
     for acceptable_weakness in acceptable_weaknesses:
@@ -349,6 +349,7 @@ def auto_score(xml_path, cwe_no):
         for group in acceptable_groups:
 
             found = False
+            #juliet_f_tc_type = False
 
             # valid groups
             if len(group) == 1:
@@ -363,7 +364,7 @@ def auto_score(xml_path, cwe_no):
                 if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
                     found = True
 
-            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
+            if found:  #if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
 
                 filepath = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib['path']  # todo: 'path' is hardcoded for now
                 fileline = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib['line']  # todo: 'line' is hardcoded for now
@@ -389,21 +390,19 @@ def auto_score(xml_path, cwe_no):
                         # count all false test cases opportunities
                         else:
 
+                            juliet_f_tc_type = True
+
                             # count hits per test cases (<= oc)
                             if first_time_thru_project:
                                 # get opp counts per test case once per xml file (project)
                                 first_time_thru_project = False
 
-                                # constuct path to test cases based on scan result 'path'
+                                # construct path to test cases based on scan result 'path'
                                 juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
                                 opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
 
-                            #accumulate all opps for all files that hit
-                            #opps_for_this_file = opps_per_test_case[filename]
-                            juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-                            juliet_f_hit_full_path = os.path.join(juliet_test_case_path, filename)
-                            #juliet_f_tc_hits.append([juliet_f_hit_full_path, 1, fileline])
-                            juliet_f_tc_hits.append([filepath, 1, fileline])
+                            # accumulate all opps for all files that hit and the line number of the hit
+                            juliet_f_tc_hits.append([filepath, fileline])
 
                 # kdm
                 elif filename.startswith("SFP"):
@@ -411,7 +410,8 @@ def auto_score(xml_path, cwe_no):
                 else:
                     print('NOT_Juliet_or_KDM_Test_Case')
                     continue
-                test_case_files.append(filename)  # todo: dont do this for juliet f oc
+
+                test_case_files.append(filename)
 
                 ''' todo: finish adding to wid sheet
                 used_wid_list.append([cwe_no, group])			
@@ -461,7 +461,10 @@ def auto_score(xml_path, cwe_no):
 
 
     # get the total unique hits per test case (SCORE)
-    score = len(set(test_case_files))
+    if juliet_f_tc_type:
+        score = len(dedup_multi_dim_list(juliet_f_tc_hits))
+    else:
+        score = len(set(test_case_files))
 
     return score, de_duped_used_wid_list, juliet_f_tc_hits
 
@@ -988,20 +991,62 @@ def write_opp_counts_to_sheet(juliet_f_hits):
 
     for file in juliet_f_hits:
         file_name = str(file[0])
-        hits = str(file[1])
-        line_no = str(file[2])
+        line_no = str(file[1])
 
-        print("FILE:-----", file_name, "HITS:-----", hits, "OC:-----", line_no)
-        op_sheet_list.append([file_name, hits, line_no])
+        op_sheet_list.append([file_name, line_no])
 
     write_opp_counts(op_sheet_list)
 
-
+def dedup_multi_dim_list(mylist):
+    seen = set()
+    newlist = []
+    for item in mylist:
+        t = tuple(item)
+        if t not in seen:
+            newlist.append(item)
+            seen.add(t)
+    return newlist
 
 if __name__ == '__main__':
 
     data = []
     juliet_f_counts = []
+
+    #mylist = [['Installation', '64%'], ['C2', '14%'], ['NA', '14%'], ['C2', '14%'], ['NA', '14%'], ['na', '7%']]
+
+
+    test = [['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_45.c', 1, '60'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_45.c', 1, '60'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_44.c', 1, '58'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_44.c', 1, '58'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_45.c', 1, '60'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_45.c', 1, '60'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_44.c', 1, '58'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_44.c', 1, '58'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '110'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '110'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '83'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '83'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_17.c', 1, '54'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_17.c', 1, '54'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_34.c', 1, '61'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_34.c', 1, '61'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_54e.c', 1, '46'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_54e.c', 1, '46'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_63b.c', 1, '45'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_63b.c', 1, '45'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_68b.c', 1, '50'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_68b.c', 1, '50'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_32.c', 1, '59'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_32.c', 1, '59'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_17.c', 1, '54'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_17.c', 1, '54'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_32.c', 1, '59'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_32.c', 1, '59'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_42.c', 1, '64'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_42.c', 1, '64'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_34.c', 1, '61'],
+     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_34.c',1, '61']]
 
     py_common.print_with_timestamp("STARTED SCORING")
 
@@ -1010,17 +1055,19 @@ if __name__ == '__main__':
     parser.add_argument('suite', help='The suite number being scanned (i.e. 1 - 10)', type=int)
     # optional
     parser.add_argument('-n', dest='normalize', action='store_true', help='compile by running the batch files')
-    #parser.add_argument('-n', dest='normalize', action='store_false', help='compile by running the batch files')
 
     args = parser.parse_args()
     suite_number = args.suite
     suite_path = os.getcwd()
-    scaned_data_path = suite_path + "\\" + "scans"
-    new_xml_path = suite_path + "\\" + XML_OUTPUT_DIR
+    scaned_data_path = suite_path + '\\' + 'scans'
+    new_xml_path = suite_path + '\\' + XML_OUTPUT_DIR
     if args.normalize:
         normalize_juliet_false_scoring=True
     else:
         normalize_juliet_false_scoring=False
+
+    #new_list = dedup_multi_dim_list(test)
+
 
     # create scorecard from vendor input file
     time = strftime("scorecard-fortify-c_%m-%d-%Y_%H.%M.%S" + "_suite_" + str(suite_number).zfill(2))
@@ -1038,17 +1085,6 @@ if __name__ == '__main__':
     wb._sheets =[wb._sheets[i] for i in neworder]
     format_workbook()
 
-
-    '''
-    a = [['F/CWE134_Uncontrolled_Format_String/s01/CWE134_Uncontrolled_Format_String__char_console_fprintf_11.c', 2, 4], ['F/CWE134_Uncontrolled_Format_String/s01/CWE134_Uncontrolled_Format_String__char_console_snprintf_31.c', 1, 2]]	
-        
-    print("a", a)
-    print("\ra0", a[0][0])
-        
-    opp_counts = get_opp_counts_per_file()
-    print(opp_counts)
-    '''
-
     # get scan data and save it to the new xml path
     data, juliet_f_counts = get_data(scaned_data_path, new_xml_path)
 
@@ -1058,7 +1094,7 @@ if __name__ == '__main__':
     # write to sheets
     write_details(data)
     write_summary(data)
-    write_opp_counts_to_sheet(juliet_f_counts)
+    #write_opp_counts_to_sheet(juliet_f_counts)
     create_summary_chart()
 
     wb.active = 0
