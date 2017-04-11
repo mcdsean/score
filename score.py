@@ -895,7 +895,7 @@ def write_summary(scan_data):
             ws1.cell(row=row, column=6).number_format = '0.00'
         else:
             ws1.cell(row=row, column=6).value = 'N/A'
-            ws1.cell(row=row, column=6).alignment = Alignment(horizontal="right")
+            ws1.cell(row=row, column=6).alignment = Alignment(horizontal='right')
 
         # RECALL
         recall = tp/tc_t
@@ -933,11 +933,11 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id):
 
     cell = ws_id.cell(row=row_id, column=col_id)
 
-    if style_id == "font_color":
+    if style_id == 'font_color':
         font_color = Font(color=color_id)
         cell.font = font_color
-    if style_id == "fg_fill":
-        fill_color = PatternFill(fgColor=color_id, fill_type = "solid")
+    if style_id == 'fg_fill':
+        fill_color = PatternFill(fgColor=color_id, fill_type='solid')
         cell.fill = fill_color
 
     # build thin border for all styles
@@ -948,7 +948,7 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id):
 def create_summary_chart():
 
     chart1 = BarChart()
-    chart1.type = "col"
+    chart1.type = 'col'
     chart1.style = 11
     chart1.y_axis.title = 'Score'
     chart1.x_axis.title = 'CWE Number'
@@ -957,7 +957,7 @@ def create_summary_chart():
     chart1.add_data(data, titles_from_data=True)
     chart1.set_categories(cats)
     chart1.shape = 4
-    chart1.title = "Protection Profile Scores"
+    chart1.title = 'Protection Profile Scores'
     auto_axis=True
     chart1.y_axis.scaling.min = 0
     chart1.y_axis.scaling.max = 1
@@ -965,7 +965,7 @@ def create_summary_chart():
     chart1.width = 45
     #chart1.set_x_axis({'num_font':  {'rotation': 270}})
 
-    ws1.add_chart(chart1, "H2")
+    ws1.add_chart(chart1, 'H2')
 
 
 def get_weakness_ids(cwe):	
@@ -973,7 +973,6 @@ def get_weakness_ids(cwe):
     cwe_weakness_ids = []
 
     ws = wb['Weakness IDs']
-    col_count = ws.max_column
 
     # get weakness ids from duplicated vendor sheet
     for row_idx in ws.iter_rows():
@@ -1014,43 +1013,44 @@ if __name__ == '__main__':
     data = []
     juliet_f_counts = []
 
-    py_common.print_with_timestamp("STARTED SCORING")
+    py_common.print_with_timestamp('--- STARTED SCORING ---')
 
     parser = argparse.ArgumentParser(description='A script used to score all SCA tools.')
     # required
     parser.add_argument('suite', help='The suite number being scanned (i.e. 1 - 10)', type=int)
     # optional
-    parser.add_argument('-n', dest='normalize', action='store_true', help='compile by running the batch files')
+    parser.add_argument('-n', dest='normalize', action='store_true', help='Enter \'\-n\' option for normalized score')
 
     args = parser.parse_args()
     suite_number = args.suite
     suite_path = os.getcwd()
-    scaned_data_path = suite_path + '\\' + 'scans'
-    new_xml_path = suite_path + '\\' + XML_OUTPUT_DIR
+    scaned_data_path = os.path.join(suite_path, 'scans')
+    new_xml_path = os.path.join(suite_path, XML_OUTPUT_DIR)
     if args.normalize:
         normalize_juliet_false_scoring=True
     else:
         normalize_juliet_false_scoring=False
 
     # create scorecard from vendor input file
-    time = strftime("scorecard-fortify-c_%m-%d-%Y_%H.%M.%S" + "_suite_" + str(suite_number).zfill(2))
-    vendor_input = os.path.join(suite_path, "vendor-input-" + TOOL_NAME +"-c.xlsx")
-    scorecard = os.path.join(suite_path, time) + ".xlsx"
+    time = strftime('scorecard-fortify-c_%m-%d-%Y_%H.%M.%S' + '_suite_' + str(suite_number).zfill(2))
+    vendor_input = os.path.join(suite_path, 'vendor-input-' + TOOL_NAME + '-c.xlsx')
+    scorecard = os.path.join(suite_path, time) + '.xlsx'
     shutil.copyfile(vendor_input, scorecard)
 
     # add sheets and format
     wb = load_workbook(scorecard)
-    ws1 = wb.create_sheet("Summary", 0)
-    ws2 = wb.create_sheet("Detailed Data", 1)
-    ws3 = wb.create_sheet("Oportunity Counts", 1)
+    ws1 = wb.create_sheet('Summary', 0)
+    ws2 = wb.create_sheet('Detailed Data', 1)
+    ws3 = wb.create_sheet('Opportunity Counts', 5)
 
-    neworder=[0,2,4,3,5,1]
-    wb._sheets =[wb._sheets[i] for i in neworder]
+    # neworder=[0,2,4,3,5,1]
+    # wb._sheets =[wb._sheets[i] for i in neworder]
     format_workbook()
 
     # get scan data and save it to the new xml path
     data = get_data(scaned_data_path, new_xml_path)
 
+    # todo: consider moving auto_score out of get_data and putting it here
     # get scores & update data
     #data = auto_score(data)
 
@@ -1063,6 +1063,4 @@ if __name__ == '__main__':
 
     wb.save(scorecard)
 
-    py_common.print_with_timestamp("FINISHED SCORING")
-
-
+    py_common.print_with_timestamp('--- FINISHED SCORING ---')
