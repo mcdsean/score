@@ -205,75 +205,83 @@ def get_data(src_path, dest_path):
     # container to hold one slot of data per scan
     data = []
     juliet_f_hits_total = []
+    opps_per_test_case_total = []
 
     used_weakness_ids = []
     used_weakness_ids_total = []
     used_unique_ids = []
 
-    kdm_counts_and_path = []
-    juliet_counts_and_path = []
+    #kdm_counts_and_path = []
+    #juliet_counts_and_path = []
 
     create_or_clean_xml_dir(dest_path)
 
     # fortify files are not in standard xml format
-    if TOOL_NAME == "fortify":
-        scan_data_files = py_common.find_files_in_dir(src_path, ".*?\.fpr$")
+    if TOOL_NAME == 'fortify':
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
     else:
-        scan_data_files = py_common.find_files_in_dir(src_path, ".*?\.xml$")
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
 
     for scan_data_file in scan_data_files:
 
         proj_name = os.path.basename(scan_data_file)
 
         # get cwe number from project name
-        match = re.search("CWE\d+", proj_name)
+        match = re.search('CWE\d+', proj_name)
         cwe_num = match.group(0)[3:].lstrip('0')
-        cwe_padded = "CWE" + cwe_num.zfill(3)
+        cwe_padded = 'CWE' + cwe_num.zfill(3)
 
         # get t/f from scan data file name
-        if "\\T\\" in scan_data_file:
-            t_f = "TRUE"
+        if '\\T\\' in scan_data_file:
+            t_f = 'TRUE'
         else:
-            t_f = "FALSE"
+            t_f = 'FALSE'
 
-        if TOOL_NAME == "fortify":
+        if TOOL_NAME == 'fortify':
             extract_fvdl_from_fpr(scan_data_file, dest_path)
 
-        proj_sub_name = proj_name.rsplit(".",2)[1]
+        proj_sub_name = proj_name.rsplit('.',2)[1]
 
-        xml_name = proj_sub_name + "_" + t_f[:1] + ".xml"
+        xml_name = proj_sub_name + '_' + t_f[:1] + '.xml'
 
         # format xml name
         tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-        new_path_to_xml = dest_path + "\\" + xml_name
+        new_path_to_xml = dest_path + '\\' + xml_name
         # create fresh xml name
         os.rename(tool_path_to_xml, new_path_to_xml)
 
         # returns the score for the current cwe and used weakness ids
-        score, used_weakness_ids, juliet_f_hits = auto_score(new_path_to_xml, cwe_num)
+        score, used_weakness_ids, juliet_f_hits, opps_per_test_case = auto_score(new_path_to_xml, cwe_num)
 
-        juliet_f_hits_total += juliet_f_hits
         used_weakness_ids_total += used_weakness_ids
+        juliet_f_hits_total += juliet_f_hits
+        opps_per_test_case_total += opps_per_test_case
         used_unique_ids = remove_dups(used_weakness_ids_total)
 
-        print ("used_weakness_ids_total=", used_unique_ids)
-        print ("LENGTH=", len(used_unique_ids))
+        print ('used_weakness_ids_total=', used_unique_ids)
+        print ('LENGTH=', len(used_unique_ids))
 
         # juliet
-        if "juliet" in scan_data_file:
-            test_case_type = "juliet"
+        if 'juliet' in scan_data_file:
+            test_case_type = 'juliet'
             juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
-            juliet_count = juliet_counts_and_path[0]
+
+            # for juliet false test cases, use opps vs test case count
+            if t_f == 'TRUE':
+                juliet_count = juliet_counts_and_path[0]
+            else:
+                juliet_count = sum(opps_per_test_case.values())
+
             juliet_path = juliet_counts_and_path[1]
             if juliet_count!= 0:
                 percent_hits = (score/juliet_count)*100
             else:
                 percent_hits = 0
-            data.append( [cwe_padded, test_case_type, juliet_count, score, round(percent_hits,1), xml_name, juliet_path, t_f, proj_name])
+            data.append([cwe_padded, test_case_type, juliet_count, score, round(percent_hits,1), xml_name, juliet_path, t_f, proj_name])
 
         # kdm
-        if "kdm" in scan_data_file:
-            test_case_type = "kdm"
+        if 'kdm' in scan_data_file:
+            test_case_type = 'kdm'
             kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
             kdm_count = kdm_counts_and_path[0]
             kdm_path = kdm_counts_and_path[1]
@@ -285,7 +293,9 @@ def get_data(src_path, dest_path):
 
     paint_sheet(used_unique_ids)
 
-    return data, juliet_f_hits_total
+    write_opp_counts_to_sheet(juliet_f_hits_total)
+
+    return data
 
 
 def auto_score(xml_path, cwe_no):
@@ -326,20 +336,20 @@ def auto_score(xml_path, cwe_no):
             weakness_id_schemas.append(tag_ids[idx][1])
 
     # add namespace(s) to schemas
-    finding_type = "ns1:" + finding_type_schema.replace("/", "/ns1:")
-    file_name = "ns1:" + file_name_schema.replace("/", "/ns1:")
+    finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
+    file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
     for w_id in weakness_id_schemas:
-        weakness_id_schemas[i] = "ns1:" + w_id.replace("/", "/ns1:")
+        weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
         i += 1
 
     # get acceptable weakness ids
     acceptable_weaknesses = get_weakness_ids(cwe_no)
 
     for acceptable_weakness in acceptable_weaknesses:
-        acceptable_groups.append(str(acceptable_weakness).split(":"))
+        acceptable_groups.append(str(acceptable_weakness).split(':'))
 
     # parse this xml
-    for vuln in root.findall("./" + finding_type, ns):
+    for vuln in root.findall('./' + finding_type, ns):
 
         # weakness id parts
         kingdom = vuln.find(weakness_id_schemas[0], ns)
@@ -360,33 +370,34 @@ def auto_score(xml_path, cwe_no):
                 if (kingdom.text in group[0]) and (type.text in group[1]):
                     found = True
 
-            elif (len(group) == 3) and ("Subtype" in str(subtype)):
+            elif (len(group) == 3) and ('Subtype' in str(subtype)):
                 if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
                     found = True
 
             if found:  #if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
 
-                filepath = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib['path']  # todo: 'path' is hardcoded for now
-                fileline = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib['line']  # todo: 'line' is hardcoded for now
+                filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' is hardcoded for now
+                fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['line']  # todo: 'line' is hardcoded for now
 
                 # extract the filename from the xml path data
                 filename = os.path.basename(filepath)
 
                 # juliet
-                if filename.startswith("CWE"):
+                if filename.startswith('CWE'):
 
-                    if filepath.startswith("T"):  # true
+                    if filepath.startswith('T'): # true
 
                         # reduce filename to test case name by removing variant and file extension
-                        filename = re.sub("[a-z]?\.\w+$", "", filename)
+                        filename = re.sub('[a-z]?\.\w+$', '', filename)
 
-                    else:  # false
+                    else: #false
 
                         # if command line argument '-n = <normalize>', process the same as true
                         if normalize_juliet_false_scoring:
 
                             # treat false the same as true
-                            filename = re.sub("[a-z]?\.\w+$", "", filename)
+                            filename = re.sub('[a-z]?\.\w+$', '', filename)
+
                         # count all false test cases opportunities
                         else:
 
@@ -394,19 +405,18 @@ def auto_score(xml_path, cwe_no):
 
                             # count hits per test cases (<= oc)
                             if first_time_thru_project:
-                                # get opp counts per test case once per xml file (project)
-                                first_time_thru_project = False
 
-                                # construct path to test cases based on scan result 'path'
+                                # get opp counts per test case
+                                first_time_thru_project = False
                                 juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
                                 opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
 
-                            # accumulate all opps for all files that hit and the line number of the hit
+                            # accumulate all hits and line numbers
                             juliet_f_tc_hits.append([filepath, fileline])
 
                 # kdm
-                elif filename.startswith("SFP"):
-                    filename = re.sub("[_a]?\.\w+$", "", filename)
+                elif filename.startswith('SFP'):
+                    filename = re.sub('[_a]?\.\w+$', '', filename)
                 else:
                     print('NOT_Juliet_or_KDM_Test_Case')
                     continue
@@ -419,7 +429,6 @@ def auto_score(xml_path, cwe_no):
                 '''
 
     '''
-    ###########################################################
     # copy file names for all hits
     juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
     juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
@@ -446,27 +455,27 @@ def auto_score(xml_path, cwe_no):
     write_opp_counts(op_sheet_list)
    '''
 
-    # # determine how many hits each file has
-    # for file in juliet_f_tc_hits:
-    #     file_name = str(file[0])
-    #     hits = str(file[1])
-    #     line_no = str(file[2])
-    #
-    #     print("FILE:-----", file_name, "HITS:-----", hits, "OC:-----", line_no)
-    #     op_sheet_list.append([file_name, hits, line_no])
-    #
-    # write_opp_counts(op_sheet_list)
+    '''
+    # determine how many hits each file has
+    for file in juliet_f_tc_hits:
+        file_name = str(file[0])
+        hits = str(file[1])
+        line_no = str(file[2])
 
-    ###########################################################
+        print("FILE:-----", file_name, "HITS:-----", hits, "OC:-----", line_no)
+        op_sheet_list.append([file_name, hits, line_no])
 
+    write_opp_counts(op_sheet_list)
+    '''
 
-    # get the total unique hits per test case (SCORE)
+    # get the unique hits for each file variant
     if juliet_f_tc_type:
         score = len(dedup_multi_dim_list(juliet_f_tc_hits))
+    # get the unique hits for each set of test case files
     else:
         score = len(set(test_case_files))
 
-    return score, de_duped_used_wid_list, juliet_f_tc_hits
+    return score, de_duped_used_wid_list, juliet_f_tc_hits, opps_per_test_case
 
 
 def get_opp_counts_per_test_case(juliet_test_case_path):
@@ -652,8 +661,8 @@ def auto_score_ORIGINAL(xml_path, cwe_no):
                     j += 1  # actual
                     print("COUNT_EXCEEDED_OC")
 
-        print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
-        op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
+        print("FILE:-----", file, "LINE:-----", i, "OC:-----", oc_count)
+        op_sheet_list.append([str(file), str(j), str(i)])
 
     write_opp_counts(op_sheet_list)
 
@@ -699,7 +708,7 @@ def write_opp_counts(op_data):
     row=1
 
     ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Hits(Actual)', 'Hits(Scored)', 'Opportunities', ]
+    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
     ##############################################################################################################
 
 
@@ -711,11 +720,11 @@ def write_opp_counts(op_data):
 
     # write column headers
     for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx+1, 'fg_fill', 'F4B084')
+        set_appearance(ws3, row, idx+1, 'fg_fill', 'A9D08E')
         ws3.cell(row=1, column=idx+1).value = title
         ws3.cell(row=1, column=idx+1).alignment = Alignment(horizontal="center")
 
-    ws3.sheet_properties.tabColor = "F4B084"
+    ws3.sheet_properties.tabColor = "A9D08E"
 
 
     for data in op_data:
@@ -997,6 +1006,7 @@ def write_opp_counts_to_sheet(juliet_f_hits):
 
     write_opp_counts(op_sheet_list)
 
+
 def dedup_multi_dim_list(mylist):
     seen = set()
     newlist = []
@@ -1007,46 +1017,11 @@ def dedup_multi_dim_list(mylist):
             seen.add(t)
     return newlist
 
+
 if __name__ == '__main__':
 
     data = []
     juliet_f_counts = []
-
-    #mylist = [['Installation', '64%'], ['C2', '14%'], ['NA', '14%'], ['C2', '14%'], ['NA', '14%'], ['na', '7%']]
-
-
-    test = [['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_45.c', 1, '60'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_45.c', 1, '60'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_44.c', 1, '58'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_44.c', 1, '58'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_45.c', 1, '60'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_45.c', 1, '60'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_44.c', 1, '58'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_44.c', 1, '58'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '110'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '110'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '83'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_21.c', 1, '83'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_17.c', 1, '54'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_17.c', 1, '54'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_34.c', 1, '61'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_34.c', 1, '61'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_54e.c', 1, '46'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_54e.c', 1, '46'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_63b.c', 1, '45'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_63b.c', 1, '45'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_68b.c', 1, '50'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_68b.c', 1, '50'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_32.c', 1, '59'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_wchar_t_alloca_snprintf_32.c', 1, '59'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_17.c', 1, '54'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_17.c', 1, '54'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_32.c', 1, '59'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_32.c', 1, '59'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_42.c', 1, '64'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_42.c', 1, '64'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_34.c', 1, '61'],
-     ['F/CWE121_Stack_Based_Buffer_Overflow/s07/CWE121_Stack_Based_Buffer_Overflow__CWE806_char_declare_snprintf_34.c',1, '61']]
 
     py_common.print_with_timestamp("STARTED SCORING")
 
@@ -1066,9 +1041,6 @@ if __name__ == '__main__':
     else:
         normalize_juliet_false_scoring=False
 
-    #new_list = dedup_multi_dim_list(test)
-
-
     # create scorecard from vendor input file
     time = strftime("scorecard-fortify-c_%m-%d-%Y_%H.%M.%S" + "_suite_" + str(suite_number).zfill(2))
     vendor_input = os.path.join(suite_path, "vendor-input-" + TOOL_NAME +"-c.xlsx")
@@ -1086,7 +1058,7 @@ if __name__ == '__main__':
     format_workbook()
 
     # get scan data and save it to the new xml path
-    data, juliet_f_counts = get_data(scaned_data_path, new_xml_path)
+    data = get_data(scaned_data_path, new_xml_path)
 
     # get scores & update data
     #data = auto_score(data)
@@ -1094,7 +1066,6 @@ if __name__ == '__main__':
     # write to sheets
     write_details(data)
     write_summary(data)
-    #write_opp_counts_to_sheet(juliet_f_counts)
     create_summary_chart()
 
     wb.active = 0
