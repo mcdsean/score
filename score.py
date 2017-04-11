@@ -246,11 +246,11 @@ def get_data(src_path, dest_path):
 
         # format xml name
         tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-        new_path_to_xml = dest_path + '\\' + xml_name
+        new_path_to_xml = os.path.join(dest_path, xml_name)
         # create fresh xml name
         os.rename(tool_path_to_xml, new_path_to_xml)
 
-        # returns the score for the current cwe and used weakness ids
+        # returns the score, used wekness ids, and opp counts for the current project
         score, used_weakness_ids, juliet_f_hits, opps_per_test_case = auto_score(new_path_to_xml, cwe_num)
 
         used_weakness_ids_total += used_weakness_ids
@@ -311,6 +311,8 @@ def auto_score(xml_path, cwe_no):
     first_time_thru_project = True
     juliet_f_tc_hits = []
     juliet_f_tc_counts = []
+    juliet_f_tc_hits_deduped = []
+
 
     test_case_files = []
     acceptable_groups = []
@@ -423,10 +425,10 @@ def auto_score(xml_path, cwe_no):
 
                 test_case_files.append(filename)
 
-                ''' todo: finish adding to wid sheet
-                used_wid_list.append([cwe_no, group])			
-                de_duped_used_wid_list = remove_dups(used_wid_list)
-                '''
+                # todo: finish adding to wid sheet
+                # used_wid_list.append([cwe_no, group])
+                # de_duped_used_wid_list = remove_dups(used_wid_list)
+
 
     '''
     # copy file names for all hits
@@ -455,27 +457,16 @@ def auto_score(xml_path, cwe_no):
     write_opp_counts(op_sheet_list)
    '''
 
-    '''
-    # determine how many hits each file has
-    for file in juliet_f_tc_hits:
-        file_name = str(file[0])
-        hits = str(file[1])
-        line_no = str(file[2])
-
-        print("FILE:-----", file_name, "HITS:-----", hits, "OC:-----", line_no)
-        op_sheet_list.append([file_name, hits, line_no])
-
-    write_opp_counts(op_sheet_list)
-    '''
 
     # get the unique hits for each file variant
     if juliet_f_tc_type:
-        score = len(dedup_multi_dim_list(juliet_f_tc_hits))
+        juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
+        score = len(juliet_f_tc_hits_deduped)
     # get the unique hits for each set of test case files
     else:
         score = len(set(test_case_files))
 
-    return score, de_duped_used_wid_list, juliet_f_tc_hits, opps_per_test_case
+    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
 
 
 def get_opp_counts_per_test_case(juliet_test_case_path):
