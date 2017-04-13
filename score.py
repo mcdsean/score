@@ -203,11 +203,9 @@ def paint_sheet(used_wid_list):
 def get_data(src_path, dest_path):
 
     # container to hold one slot of data per scan
-    data = []
+    data_list = []
     juliet_f_hits_total = []
-    opps_per_test_case_total = []
 
-    used_weakness_ids = []
     used_weakness_ids_total = []
     used_unique_ids = []
 
@@ -224,64 +222,76 @@ def get_data(src_path, dest_path):
 
     for scan_data_file in scan_data_files:
 
+        # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
+        if '\\T\\' in scan_data_file:
+            t_f = 'TRUE'
+        else:
+            t_f = 'FALSE'
+
         proj_name = os.path.basename(scan_data_file)
+        proj_sub_name = proj_name.rsplit('.', 2)[1]
+
+        if 'juliet' in scan_data_file:
+            test_case_type = 'juliet'
+            xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
+        elif 'kdm' in scan_data_file:
+            test_case_type = 'kdm'
+            xml_name = proj_sub_name + '_' + test_case_type + '.xml'
+        else:
+            print('NO TEST CASE TYPE FOUND!')
+
+        if TOOL_NAME == 'fortify':
+            extract_fvdl_from_fpr(scan_data_file, dest_path)
+
+            # format xml name
+        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
+        new_path_to_xml = os.path.join(dest_path, xml_name)
+        # create fresh xml name
+        os.rename(tool_path_to_xml, new_path_to_xml)
 
         # get cwe number from project name
         match = re.search('CWE\d+', proj_name)
         cwe_num = match.group(0)[3:].lstrip('0')
         cwe_padded = 'CWE' + cwe_num.zfill(3)
 
-        # get t/f from scan data file name
-        if '\\T\\' in scan_data_file:
-            t_f = 'TRUE'
-        else:
-            t_f = 'FALSE'
-
-        if TOOL_NAME == 'fortify':
-            extract_fvdl_from_fpr(scan_data_file, dest_path)
-
-        proj_sub_name = proj_name.rsplit('.',2)[1]
-
-        xml_name = proj_sub_name + '_' + t_f[:1] + '.xml'
-
-        # format xml name
-        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-        new_path_to_xml = os.path.join(dest_path, xml_name)
-        # create fresh xml name
-        os.rename(tool_path_to_xml, new_path_to_xml)
-
-        # returns the score, used wekness ids, and opp counts for the current project
-        score, used_weakness_ids, juliet_f_hits, opps_per_test_case = auto_score(new_path_to_xml, cwe_num)
+        # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
+        # score, used_weakness_ids, juliet_f_hits, opps_per_test_case = auto_score(new_path_to_xml, cwe_num, test_case_type, t_f)
+        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num,
+                                                                                     test_case_type, t_f)
 
         used_weakness_ids_total += used_weakness_ids
         juliet_f_hits_total += juliet_f_hits
-        opps_per_test_case_total += opps_per_test_case
         used_unique_ids = remove_dups(used_weakness_ids_total)
 
         print ('used_weakness_ids_total=', used_unique_ids)
         print ('LENGTH=', len(used_unique_ids))
 
         # juliet
-        if 'juliet' in scan_data_file:
-            test_case_type = 'juliet'
+        if test_case_type == 'juliet':
             juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
 
             # for juliet false test cases, use opps vs test case count
             if t_f == 'TRUE':
                 juliet_count = juliet_counts_and_path[0]
-            else:
+            elif t_f == 'FALSE':
+                # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
+                # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+                opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
                 juliet_count = sum(opps_per_test_case.values())
+            else:
+                print('TRUE/FALSE NOT FOUND')
 
             juliet_path = juliet_counts_and_path[1]
             if juliet_count!= 0:
                 percent_hits = (score/juliet_count)*100
             else:
                 percent_hits = 0
-            data.append([cwe_padded, test_case_type, juliet_count, score, round(percent_hits,1), xml_name, juliet_path, t_f, proj_name])
+            data_list.append(
+                [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
+                 proj_name])
 
         # kdm
-        if 'kdm' in scan_data_file:
-            test_case_type = 'kdm'
+        if test_case_type == 'kdm':
             kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
             kdm_count = kdm_counts_and_path[0]
             kdm_path = kdm_counts_and_path[1]
@@ -289,17 +299,18 @@ def get_data(src_path, dest_path):
                 percent_hits = (score/kdm_count)*100
             else:
                 percent_hits = 0
-            data.append( [cwe_padded, test_case_type, kdm_count, score, round(percent_hits,1), xml_name, kdm_path, t_f, proj_name])
+            data_list.append(
+                [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
+                 proj_name])
 
     paint_sheet(used_unique_ids)
 
     write_opp_counts_to_sheet(juliet_f_hits_total)
 
-    return data
+    return data_list
 
 
-def auto_score(xml_path, cwe_no):
-    # todo: make more generic and cleanup
+def auto_score(xml_path, cwe_no, test_case_type, test_case_t_f):
 
     i = 0
     ns = {}
@@ -315,6 +326,16 @@ def auto_score(xml_path, cwe_no):
     acceptable_groups = []
     weakness_id_schemas = []
     de_duped_used_wid_list = []
+
+    '''
+    # get opp counts for juliet-false only
+    if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
+        # get opp counts per test case
+        first_time_thru_project = False
+        # count hits per test cases (<= oc)
+        juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
+        opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+    '''
 
     # read namespace from xml
     tree = ET.parse(xml_path)
@@ -352,27 +373,20 @@ def auto_score(xml_path, cwe_no):
         type = vuln.find(weakness_id_schemas[1], ns)
         subtype = vuln.find(weakness_id_schemas[2], ns)
         fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-            'line']  # todo: 'line' is hardcoded for now and not all tools may have this
-        filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' is hardcoded for now
+            'line']  # todo: 'line' hardcoded for now and not all tools may have this
+        filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
         filename = os.path.basename(filepath)
+        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
 
-        if filename.startswith('CWE'):
-            test_case_type = 'Juliet'
-        else:
-            test_case_type = 'kdm'
-
-        if filepath.startswith('T'):
-            test_case_t_f = 'TRUE'
-        else:
-            test_case_t_f = 'FALSE'
-
+        '''
         # get opp counts for juliet-false only
         if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
             # get opp counts per test case
             first_time_thru_project = False
-            # todo: need to get opp counts for all test cases and not just for those that hit
+            # count hits per test cases (<= oc)
             juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
             opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+        '''
 
         for group in acceptable_groups:
             found = False
@@ -389,7 +403,7 @@ def auto_score(xml_path, cwe_no):
 
             if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
                 # JULIET
-                if test_case_type == 'Juliet':
+                if test_case_type == 'juliet':
                     if test_case_t_f == 'TRUE':
                         # reduce filename to test case name by removing variant and file extension
                         filename = re.sub('[a-z]?\.\w+$', '', filename)
@@ -400,7 +414,6 @@ def auto_score(xml_path, cwe_no):
                             filename = re.sub('[a-z]?\.\w+$', '', filename)
                         else:
                             juliet_f_tc_type = True
-                            # count hits per test cases (<= oc)
                             # accumulate all hits and line numbers
                             juliet_f_tc_hits.append([filepath, fileline])
                 # KDM
@@ -451,7 +464,8 @@ def auto_score(xml_path, cwe_no):
     else:
         score = len(set(test_case_files))
 
-    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
+    # return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
+    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
 
 
 def get_opp_counts_per_test_case(juliet_test_case_path):
@@ -485,338 +499,6 @@ def get_opp_counts_per_test_case(juliet_test_case_path):
 
     # return opp counts by test case name
     return opp_counts # todo: consider sorting these for speed?
-
-
-def auto_score_ORIGINAL_2(xml_path, cwe_no):
-    # todo: make more generic and cleanup
-
-    juliet_f_tc_type = False
-    i = 0
-    ns = {}
-    opps_per_test_case = {}
-
-    op_sheet_list = []
-
-    first_time_thru_project = True
-    juliet_f_tc_hits = []
-    juliet_f_tc_counts = []
-    juliet_f_tc_hits_deduped = []
-
-    test_case_files = []
-    acceptable_groups = []
-    weakness_id_schemas = []
-    used_wid_list = []
-    de_duped_used_wid_list = []
-
-    # read namespace from xml
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-    tag_ids = import_xml_tags()
-
-    # get xml schema from vendor input file
-    for idx, tag in enumerate(tag_ids):
-
-        if idx == 1:
-            finding_type_schema = tag_ids[idx][1]
-        if idx == 2:
-            file_name_schema = tag_ids[idx][1]
-        if idx > 2:
-            weakness_id_schemas.append(tag_ids[idx][1])
-
-    # add namespace(s) to schemas
-    finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
-    file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
-    for w_id in weakness_id_schemas:
-        weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
-        i += 1
-
-    # get acceptable weakness ids
-    acceptable_weaknesses = get_weakness_ids(cwe_no)
-
-    for acceptable_weakness in acceptable_weaknesses:
-        acceptable_groups.append(str(acceptable_weakness).split(':'))
-
-    # parse this xml
-    for vuln in root.findall('./' + finding_type, ns):
-
-        # weakness id parts
-        kingdom = vuln.find(weakness_id_schemas[0], ns)
-        type = vuln.find(weakness_id_schemas[1], ns)
-        subtype = vuln.find(weakness_id_schemas[2], ns)
-
-        for group in acceptable_groups:
-
-            found = False
-            # juliet_f_tc_type = False
-
-            # valid groups
-            if len(group) == 1:
-                if kingdom.text in group[0]:
-                    found = True
-
-            elif len(group) == 2:
-                if (kingdom.text in group[0]) and (type.text in group[1]):
-                    found = True
-
-            elif (len(group) == 3) and ('Subtype' in str(subtype)):
-                if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
-                    found = True
-
-            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
-
-                filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-                    'path']  # todo: 'path' is hardcoded for now
-                fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-                    'line']  # todo: 'line' is hardcoded for now
-
-                # extract the filename from the xml path data
-                filename = os.path.basename(filepath)
-
-                # juliet
-                if filename.startswith('CWE'):
-
-                    if filepath.startswith('T'):  # true
-
-                        # reduce filename to test case name by removing variant and file extension
-                        filename = re.sub('[a-z]?\.\w+$', '', filename)
-
-                    else:  # false
-
-                        # if command line argument '-n = <normalize>', process the same as true
-                        if normalize_juliet_false_scoring:
-
-                            # treat false the same as true
-                            filename = re.sub('[a-z]?\.\w+$', '', filename)
-
-                        # count all false test cases opportunities
-                        else:
-
-                            juliet_f_tc_type = True
-
-                            # count hits per test cases (<= oc)
-                            if first_time_thru_project:
-                                # get opp counts per test case
-                                first_time_thru_project = False
-                                juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-                                opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-
-                            # accumulate all hits and line numbers
-                            juliet_f_tc_hits.append([filepath, fileline])
-
-                # kdm
-                elif filename.startswith('SFP'):
-                    filename = re.sub('[_a]?\.\w+$', '', filename)
-                else:
-                    print('NOT_Juliet_or_KDM_Test_Case')
-                    continue
-
-                test_case_files.append(filename)
-
-                # todo: finish adding to wid sheet
-                # used_wid_list.append([cwe_no, group])
-                # de_duped_used_wid_list = remove_dups(used_wid_list)
-
-    '''
-    # copy file names for all hits
-    juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
-    juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
-
-    # determine how many hits each file has
-    for file in juliet_f_tc_hits_deduped:
-        i, j = 0, 0
-        # Count the number of hits each file received
-        for file2 in juliet_f_tc_hits:
-            if file2[0] == file:
-                oc_count = file2[1]
-                # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
-                print('oc_count', oc_count)
-                if oc_count > i:
-                    i += 1  # used
-                    j += 1
-                else:
-                    j += 1  # actual
-                    print("COUNT_EXCEEDED_OC")
-
-        print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
-        op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
-
-    write_opp_counts(op_sheet_list)
-   '''
-
-    # get the unique hits for each file variant
-    if juliet_f_tc_type:
-        juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
-        score = len(juliet_f_tc_hits_deduped)
-    # get the unique hits for each set of test case files
-    else:
-        score = len(set(test_case_files))
-
-    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
-
-
-def auto_score_ORIGINAL(xml_path, cwe_no):
-    # todo: make more generic and cleanup
-
-    i = 0
-    ns = {}
-
-    op_sheet_list = []
-
-    first_time_thru_project = True
-    juliet_f_tc_hits = []
-    juliet_f_tc_counts = []
-
-    test_case_files = []
-    acceptable_groups = []
-    weakness_id_schemas = []
-    used_wid_list = []
-    de_duped_used_wid_list = []
-
-    # read namespace from xml
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-    tag_ids = import_xml_tags()
-
-    # get xml schema from vendor input file
-    for idx, tag in enumerate(tag_ids):
-
-        if idx == 1:
-            finding_type_schema = tag_ids[idx][1]
-        if idx == 2:
-            file_name_schema = tag_ids[idx][1]
-        if idx > 2:
-            weakness_id_schemas.append(tag_ids[idx][1])
-
-    # add namespace(s) to schemas
-    finding_type = "ns1:" + finding_type_schema.replace("/", "/ns1:")
-    file_name = "ns1:" + file_name_schema.replace("/", "/ns1:")
-    for w_id in weakness_id_schemas:
-        weakness_id_schemas[i] = "ns1:" + w_id.replace("/", "/ns1:")
-        i += 1
-    file_line = 'ns1:AnalysisInfo/ns1:Unified/ns1:Context/ns1:FunctionDeclarationSourceLocation/ns1:line'
-
-    # get acceptabe weakness ids
-    acceptable_weaknesses = get_weakness_ids(cwe_no)
-
-    for acceptable_weakness in acceptable_weaknesses:
-        acceptable_groups.append(str(acceptable_weakness).split(":"))
-
-    # parse this xml
-    for vuln in root.findall("./" + finding_type, ns):
-
-        # weakness id parts
-        kingdom = vuln.find(weakness_id_schemas[0], ns)
-        type = vuln.find(weakness_id_schemas[1], ns)
-        subtype = vuln.find(weakness_id_schemas[2], ns)
-
-        for group in acceptable_groups:
-
-            found = False
-
-            # valid groups
-            if len(group) == 1:
-                if kingdom.text in group[0]:
-                    found = True
-
-            elif len(group) == 2:
-                if (kingdom.text in group[0]) and (type.text in group[1]):
-                    found = True
-
-            elif (len(group) == 3) and ("Subtype" in str(subtype)):
-                if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
-                    found = True
-
-            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
-
-                filepath = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib[
-                    'path']  # todo: 'path' is hardcoded for now
-                fileline = vuln.find(file_name.rsplit("/", 1)[0], ns).attrib[
-                    'line']  # todo: 'line' is hardcoded for now
-
-                # extract the filename from the xml path data
-                filename = os.path.basename(filepath)
-
-                # juliet
-                if filename.startswith("CWE"):
-
-                    if filepath.startswith("T"):  # true
-
-                        # reduce filename to test case name by removing variant and file extension
-                        filename = re.sub("[a-z]?\.\w+$", "", filename)
-
-                    else:  # false
-
-                        # if command line argument '-n = <normalize>', process the same as true
-                        if normalize_juliet_false_scoring:
-
-                            # treat false the same as true
-                            filename = re.sub("[a-z]?\.\w+$", "", filename)
-
-                        else:
-
-                            # count hits per test cases (<= oc)
-                            if first_time_thru_project:
-                                # get opp counts per test case once per xml file (project)
-                                first_time_thru_project = False
-
-                                # constuct path to test cases based on scan result 'path'
-                                juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-                                opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-                                opps_per_test_case_file = get_opp_counts_per_file(juliet_test_case_path)
-
-                            # accumulate all opps for all files that hit
-                            opps_for_this_file = opps_per_test_case_file[filename]
-                            juliet_f_tc_hits.append([filepath, opps_for_this_file])
-
-                # kdm
-                elif filename.startswith("SFP"):
-                    filename = re.sub("[_a]?\.\w+$", "", filename)
-                else:
-                    print("NOT_Juliet_or_KDM_Test_Case")
-                    continue
-                test_case_files.append(filename)  # todo: dont do this for juliet f oc
-
-                ''' todo: finish adding to wid sheet
-                used_wid_list.append([cwe_no, group])			
-                de_duped_used_wid_list = remove_dups(used_wid_list)
-                '''
-
-    ###########################################################
-    # copy file names for all hits
-    juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
-    juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
-
-    # determine how many hits each file has
-    for file in juliet_f_tc_hits_deduped:
-        i, j = 0, 0
-        # Count the number of hits each file received
-        for file2 in juliet_f_tc_hits:
-            if file2[0] == file:
-                oc_count = file2[1]
-                # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
-                print('oc_count', oc_count)
-                if oc_count > i:
-                    i += 1  # used
-                    j += 1
-                else:
-                    j += 1  # actual
-                    print("COUNT_EXCEEDED_OC")
-
-        print("FILE:-----", file, "LINE:-----", i, "OC:-----", oc_count)
-        op_sheet_list.append([str(file), str(j), str(i)])
-
-    write_opp_counts(op_sheet_list)
-
-    ###########################################################
-
-    # get the total unique hits per test case (SCORE)
-    score = len(set(test_case_files))
-
-    return score, de_duped_used_wid_list
 
 
 def get_opp_counts_per_file(file_path):
