@@ -16,6 +16,16 @@ from openpyxl.chart import BarChart, Reference, Series
 # Global for command line argument
 normalize_juliet_false_scoring=False
 
+'''
+Final version before major redesign #2
+
+This is the final version prior to a major redesign. 
+If has one knowm issue for calculating TC for Juliet False
+acount are zero for cwe 562. Other Juliet false TC have not 
+been verified. All other counts and hits are believed to be 
+correct
+ '''
+
 TOOL_NAME = "fortify"
 FVDL_NAME = "audit.fvdl"
 XML_OUTPUT_DIR = "xmls"
