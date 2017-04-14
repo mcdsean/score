@@ -867,7 +867,19 @@ if __name__ == '__main__':
 
     data1 = Xmls(scaned_data_path, new_xml_path, TOOL_NAME)
 
+    for idx, tag in enumerate(data1.xml_projects):
+        data2 = data1.xml_projects[idx].__getattribute__('new_xml_name')
+        print('NEWXMLNAME', data2)
+
     '''
+
+    i=0
+    for data2 in data1:
+        data1.xml_projects[i].__getattribute__('cwe_num')
+        i+=1
+        print('TAG---------', data1.xml_projects[i].__getattribute__('cwe_num'))
+
+
     # write to sheets
     write_details(data)
     write_summary(data)
