@@ -13,10 +13,6 @@ class Xml(object):
         self.scan_data_file = raw_project_file
 
         print('SCAN DATA FILE---', self.scan_data_file)
-        print('CWE--------', self.cwe_num)
-        print('TYPE-------', self.tc_type)
-        print('T_F--------', self.true_false)
-        print('NEW XML----', self.new_xml_name)
 
 
 class Xmls(object):
@@ -24,8 +20,8 @@ class Xmls(object):
         self.source_path = source_path
         self.dest_path = dest_path
         self.tool_name = tool_name
-        self.scan_data_files = []
 
+        self.scan_data_files = []
         self.xml_projects = []
 
         # automatically clean or create dir
