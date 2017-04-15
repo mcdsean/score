@@ -37,6 +37,7 @@ class Xmls(object):
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
+        self.get_test_case_path(self.scan_data_files)
 
     def create_xml_dir(self):
         # create, or empty, 'xmls' folder
@@ -114,3 +115,19 @@ class Xmls(object):
             self.xml_projects.append(Xml(cwe_id_padded, cwe_num, tc_type, true_false, new_xml_name, scan_data_file))
 
         return self.xml_projects
+
+    def get_test_case_path(self, scan_data_files):
+
+        for i, path in enumerate(scan_data_files):
+            # self.xml_projects[i].__setattr__('juliet_tc_path', 'hello') #todo: keep for now, this shows that i can create an attrib
+            self.xml_projects[i].__setattr__('tc_path', 'hello')
+
+
+            # for i, file in enumerate(scan_data_files):
+            #    setattr(file[i], self.tc_path, 'hello')
+
+            # for scan_data_file in scan_data_files:
+            # juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
+            # juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
+
+            # return self.tc_path

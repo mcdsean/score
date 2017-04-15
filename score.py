@@ -165,6 +165,64 @@ def count_juliet_test_cases(fpr_name):
     return path_and_count
 
 
+def count_juliet_test_cases_OROGINAL(fpr_name):
+    count = 0
+    full_path = ""
+    found = False
+    test_cases = []
+    path_and_count = []
+    juliet_tc_path = ""
+    t_f = ""
+
+    # get juliet regex
+    regex = py_common.get_primary_testcase_filename_regex()
+
+    if "\\T\\" in fpr_name:
+        t_f = "T"
+    else:
+        t_f = "F"
+
+    juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
+    juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
+
+    dir_info = fpr_name.rsplit(".", 2)[1]
+    cwe_ = dir_info.split("_")[0] + "_"
+
+    if "_" in dir_info:
+        sub_dir = dir_info.split("_")[1]
+    else:
+        sub_dir = "none"
+
+    for root, dirs, files in os.walk(juliet_tc_path):
+
+        for dir in dirs:
+
+            full_path = root + "\\" + dir
+
+            if sub_dir != "none":
+                if (cwe_ in full_path) and (sub_dir in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+            else:
+                if (cwe_ in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+        if found:
+            break
+
+    # count juliet test cases for this project
+    for test_case in test_cases:
+        count += 1
+
+    path_and_count.extend([count, full_path])
+
+    return path_and_count
+
+
 def extract_fvdl_from_fpr(fpr_file, output_dir):
     # fortify .fpr files need unzipped to get the xml
     myzip = zipfile.ZipFile(fpr_file, mode='r')
@@ -519,28 +577,14 @@ def write_details(scan_data):
         ws2.cell(row=1, column=idx + 1).value = title
         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
+    # write detailed data
     for j, attrib in enumerate(attribute_list):
-
         for i, xml_data in enumerate(data1.xml_projects):
             # juliet of kdm
             tc_type = getattr(data1.xml_projects[i], attrib)
             ws2.cell(row=i + 2, column=j + 1).value = tc_type
             set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
-
-        '''
-
-        # juliet of kdm
-        tc_type = getattr(data1.xml_projects[i], 'tc_type')
-        ws2.cell(row=i + 2, column=2).value = tc_type
-        set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
-        ws2.cell(row=i + 2, column=2).alignment = Alignment(horizontal="right")
-        # true or false
-        true_false = getattr(data1.xml_projects[i], 'true_false')
-        ws2.cell(row=i + 2, column=3).value = true_false
-        set_appearance(ws2, i + 2, 3, 'fg_fill', 'FFFFFF')
-        ws2.cell(row=i + 2, column=3).alignment = Alignment(horizontal="right")
-        '''
 
 
     '''
@@ -939,11 +983,13 @@ if __name__ == '__main__':
 
     data1 = Xmls(scaned_data_path, new_xml_path, TOOL_NAME)
 
+    '''
     for idx, tag in enumerate(data1.xml_projects):
         data2 = data1.xml_projects[idx].__getattribute__('new_xml_name')
         data3 = getattr(data1.xml_projects[idx], 'tc_type')
         print('data2', data2)
         print('data3', data3)
+    '''
 
     # write to sheets
     write_details(data)
