@@ -516,6 +516,60 @@ def write_details(scan_data):
         ws2.cell(row=1, column=idx + 1).value = title
         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
+    for i, xml_data in enumerate(data1.xml_projects):
+        col = 2
+        tc_type = getattr(data1.xml_projects[i], 'tc_type')
+
+        ws2.cell(row=i + 2, column=col).value = tc_type
+
+        set_appearance(ws2, i + 1, col, 'fg_fill', 'FFFFFF')
+        ws2.cell(row=i + 2, column=col).alignment = Alignment(horizontal="right")
+
+    '''
+    for data in scan_data:
+
+        row += 1
+
+        # write data to sheets
+        for idx, data_id in enumerate(data):
+            ws2.cell(row=row, column=idx + 1).value = data_id
+
+            set_appearance(ws2, row, idx + 1, 'fg_fill', 'FFFFFF')
+            ws2.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+        # set appearance & style
+        if data[3] > 0:  # if hits > 0
+            if data[7] == "TRUE":  # if true
+                set_appearance(ws2, row, 4, 'font_color', '548235')
+                set_appearance(ws2, row, 5, 'font_color', '548235')
+            if data[7] == "FALSE":  # if false
+                set_appearance(ws2, row, 4, 'font_color', 'C00000')
+                set_appearance(ws2, row, 5, 'font_color', 'C00000')
+        else:  # no hits
+            set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
+            set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
+    '''
+
+
+def write_details_ORIGINAL(scan_data):
+    #########################################################################################################
+    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
+    #########################################################################################################
+
+    row = 1
+
+    # perform multi-column sorts
+    scan_data.sort(key=sort)
+
+    # freeze first row and column
+    ws2.freeze_panes = ws2['B2']
+
+    # write column headers
+    for idx, title in enumerate(detail_sheet_titles):
+        set_appearance(ws2, row, idx + 1, 'fg_fill', 'F4B084')
+        ws2.cell(row=1, column=idx + 1).value = title
+        ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
     for data in scan_data:
 
         row += 1
@@ -873,21 +927,14 @@ if __name__ == '__main__':
         print('data2', data2)
         print('data3', data3)
 
-    '''
-
-    i=0
-    for data2 in data1:
-        data1.xml_projects[i].__getattribute__('cwe_num')
-        i+=1
-        print('TAG---------', data1.xml_projects[i].__getattribute__('cwe_num'))
-
-
     # write to sheets
     write_details(data)
+
+    '''
     write_summary(data)
     create_summary_chart()
+    '''
     wb.active = 0
     wb.save(scorecard)
-    '''
 
     py_common.print_with_timestamp('--- FINISHED SCORING ---')
