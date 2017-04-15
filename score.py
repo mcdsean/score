@@ -32,7 +32,7 @@ def format_workbook():
     # set varying col widths for sheet 2
     ws2.column_dimensions['A'].width = 8
     ws2.column_dimensions['B'].width = 5
-    ws2.column_dimensions['C'].width = 4
+    ws2.column_dimensions['C'].width = 5
     ws2.column_dimensions['D'].width = 4
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 36
@@ -499,10 +499,13 @@ def sort(v):  # for sorting
 
 def write_details(scan_data):
     #########################################################################################################
-    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
+    detail_sheet_titles = ['CWE', 'Type', 'T/F', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'RAW Project File']
     #########################################################################################################
 
     row = 1
+
+    attribute_list = ['cwe_id_padded', 'tc_type', 'true_false', 'tc_count', 'num_of_hits', 'percent_hits',
+                      'new_xml_name', 'tc_path', 'scan_data_file']
 
     # perform multi-column sorts
     scan_data.sort(key=sort)
@@ -516,14 +519,32 @@ def write_details(scan_data):
         ws2.cell(row=1, column=idx + 1).value = title
         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
-    for i, xml_data in enumerate(data1.xml_projects):
-        col = 2
+    for j, attrib in enumerate(attribute_list):
+
+        for i, xml_data in enumerate(data1.xml_projects):
+            # juliet of kdm
+            tc_type = getattr(data1.xml_projects[i], attrib)
+            ws2.cell(row=i + 2, column=j + 1).value = tc_type
+            set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
+            ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
+
+        '''
+        attribute_list = []
+
+        attribute_list.append(cwe, type, tf, tc, hits, percent_hits, xml_name, tc_path,project_file_path)
+
+        # juliet of kdm
         tc_type = getattr(data1.xml_projects[i], 'tc_type')
+        ws2.cell(row=i + 2, column=2).value = tc_type
+        set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
+        ws2.cell(row=i + 2, column=2).alignment = Alignment(horizontal="right")
+        # true or false
+        true_false = getattr(data1.xml_projects[i], 'true_false')
+        ws2.cell(row=i + 2, column=3).value = true_false
+        set_appearance(ws2, i + 2, 3, 'fg_fill', 'FFFFFF')
+        ws2.cell(row=i + 2, column=3).alignment = Alignment(horizontal="right")
+        '''
 
-        ws2.cell(row=i + 2, column=col).value = tc_type
-
-        set_appearance(ws2, i + 1, col, 'fg_fill', 'FFFFFF')
-        ws2.cell(row=i + 2, column=col).alignment = Alignment(horizontal="right")
 
     '''
     for data in scan_data:

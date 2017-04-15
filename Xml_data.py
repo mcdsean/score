@@ -5,12 +5,21 @@ FVDL_NAME = "audit.fvdl"
 
 
 class Xml(object):
-    def __init__(self, cwe_num, tc_type, true_false, new_xml_name, raw_project_file):
+    def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, new_xml_name, scan_data_file):
+        self.cwe_id_padded = cwe_id_padded
         self.cwe_num = cwe_num
         self.tc_type = tc_type
+
+        self.tc_count = ''  # tc_count
+        self.num_of_hits = ''  # num_of_hits
+        self.percent_hits = ''  # percent_hits
+        self.tc_path = ''  # tc_path
+
+
+
         self.true_false = true_false
         self.new_xml_name = new_xml_name
-        self.scan_data_file = raw_project_file
+        self.scan_data_file = scan_data_file
 
         print('SCAN DATA FILE---', self.scan_data_file)
 
@@ -100,6 +109,8 @@ class Xmls(object):
 
             self.copy_xml_file(scan_data_file, new_xml_name)
 
-            self.xml_projects.append(Xml(cwe_num, tc_type, true_false, new_xml_name, scan_data_file))
+            cwe_id_padded = 'CWE' + cwe_num.zfill(3)
+
+            self.xml_projects.append(Xml(cwe_id_padded, cwe_num, tc_type, true_false, new_xml_name, scan_data_file))
 
         return self.xml_projects
