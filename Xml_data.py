@@ -30,10 +30,12 @@ class Xmls(object):
         self.dest_path = dest_path
         self.tool_name = tool_name
 
+        # raw file produced by tool
         self.scan_data_files = []
+        # list of xml projects
         self.xml_projects = []
 
-        # automatically clean or create dir
+        # create or clean xml dir
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
@@ -116,18 +118,28 @@ class Xmls(object):
 
         return self.xml_projects
 
-    def get_test_case_path(self, scan_data_files):
+    def get_test_case_path(self, xml_projects):
 
-        for i, path in enumerate(scan_data_files):
+        for i, path in enumerate(xml_projects):
             # self.xml_projects[i].__setattr__('juliet_tc_path', 'hello') #todo: keep for now, this shows that i can create an attrib
             self.xml_projects[i].__setattr__('tc_path', 'hello')
+            # path = os.path.join(os.getcwd(), getattr(xml_projects[i], 'tc_type'))
+            # print(path)
+
+        '''
+
+        for i, xml_data in enumerate(xml_projects):
+            tc_type = getattr(xml_data, 'tc_type')
 
 
-            # for i, file in enumerate(scan_data_files):
-            #    setattr(file[i], self.tc_path, 'hello')
+
+
+                # for i, file in enumerate(scan_data_files):
+        setattr(file[i], self.tc_path, 'hello')
 
             # for scan_data_file in scan_data_files:
             # juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
             # juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
 
             # return self.tc_path
+        '''
