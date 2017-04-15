@@ -529,9 +529,6 @@ def write_details(scan_data):
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
 
         '''
-        attribute_list = []
-
-        attribute_list.append(cwe, type, tf, tc, hits, percent_hits, xml_name, tc_path,project_file_path)
 
         # juliet of kdm
         tc_type = getattr(data1.xml_projects[i], 'tc_type')
