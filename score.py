@@ -869,7 +869,9 @@ if __name__ == '__main__':
 
     for idx, tag in enumerate(data1.xml_projects):
         data2 = data1.xml_projects[idx].__getattribute__('new_xml_name')
-        print('NEWXMLNAME', data2)
+        data3 = getattr(data1.xml_projects[idx], 'tc_type')
+        print('data2', data2)
+        print('data3', data3)
 
     '''
 
