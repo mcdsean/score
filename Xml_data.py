@@ -124,6 +124,35 @@ class Xmls(object):
 
     def get_test_case_path(self, xml_projects):
 
+        root_list = []
+
+        # todo: get only lowest folders containing cwe?
+        for root, dirs, files in os.walk('C:\\01\\juliet\\T'):
+            root_list.append(root)
+        for root, dirs, files in os.walk('C:\\01\\juliet\\F'):
+            root_list.append(root)
+        for root, dirs, files in os.walk('C:\\01\\kdm\\T'):
+            root_list.append(root)
+        for root, dirs, files in os.walk('C:\\01\\kdm\\F'):
+            root_list.append(root)
+
+        for i, xml_project in enumerate(xml_projects):
+            # get the xml name for each project
+            xml_name = getattr(self.xml_projects[i], 'new_xml_name')[:-4]
+
+            key_list = xml_name.split('_')
+
+            for root1 in root_list:
+                if all(x in root1 for x in key_list):
+                    print('ROOT FOUND----------', root1)
+                    cwd = os.getcwd()
+
+                    setattr(self.xml_projects[i], 'tc_path', root1.replace(os.getcwd(), ''))
+                    root_list.remove(root1)
+                    break
+
+    def get_test_case_path_1(self, xml_projects):
+
         for i, xml_project in enumerate(xml_projects):
 
             true_false = getattr(self.xml_projects[i], 'true_false')[:1]
@@ -142,45 +171,3 @@ class Xmls(object):
                     print('ROOT----------', root)
                     setattr(self.xml_projects[i], 'tc_path', root.replace(os.getcwd(), ''))
                     break
-
-
-                    # print('attrib-----------' ,xml_name)
-
-
-
-        '''
-        for i, scan_data_file in enumerate(scan_data_files):
-
-
-
-            path1 = os.path.join(os.getcwd(), getattr(self.xml_projects[i], 'tc_type'))
-            path1 = os.path.join(scan_data_file, getattr(self.xml_projects[i], 'true_false')[:1])
-            test = scan_data_file.rsplit('.',2)[1]
-            print('test-----------', test)
-        '''
-
-    #         print(path_part_2)
-    #
-    #         #for root, dirs, files in os.walk('c:\\01\\juliet'):
-    #
-    #         #   for file in files:
-    #
-    #
-    #
-    #
-    #
-    #         # self.xml_projects[i].__setattr__('juliet_tc_path', 'hello') #todo: keep for now, this shows that i can create an attrib
-    #         # self.xml_projects[i].__setattr__('tc_path', 'hello') # todo: this works too
-    #
-    #
-    #         path1 = os.path.join(os.getcwd(), getattr(self.xml_projects[i], 'tc_type'))
-    #         path1 = os.path.join(path, getattr(self.xml_projects[i], 'true_false')[:1])
-    #         test = path.rsplit('.',2)[1]
-    #
-    #         # if all(x in path for x in key_list):
-    #         # if all(x in 'c:\\01\\juliet' for x in key_list):
-    #         #    print('FOUND CWE121------', path)
-    #
-    #
-    #         # setattr(self.xml_projects[i], 'tc_path', path)
-    #         # print(path)

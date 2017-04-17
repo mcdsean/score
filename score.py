@@ -35,10 +35,10 @@ def format_workbook():
     ws2.column_dimensions['C'].width = 5
     ws2.column_dimensions['D'].width = 4
     ws2.column_dimensions['E'].width = 6
-    ws2.column_dimensions['F'].width = 36
-    ws2.column_dimensions['G'].width = 65
-    ws2.column_dimensions['H'].width = 5
-    ws2.column_dimensions['I'].width = 61
+    ws2.column_dimensions['F'].width = 5
+    ws2.column_dimensions['G'].width = 40
+    ws2.column_dimensions['H'].width = 66
+    ws2.column_dimensions['I'].width = 97
 
     # opp
     ws3.column_dimensions['A'].width = 93
