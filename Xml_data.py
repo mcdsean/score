@@ -9,17 +9,15 @@ class Xml(object):
         self.cwe_id_padded = cwe_id_padded
         self.cwe_num = cwe_num
         self.tc_type = tc_type
-
+        self.true_false = true_false
+        self.tc_lang = tc_lang
+        self.new_xml_name = new_xml_name
+        self.scan_data_file = scan_data_file
+        # runtime attributes
         self.tc_count = ''  # tc_count
         self.num_of_hits = ''  # num_of_hits
         self.percent_hits = ''  # percent_hits
         self.tc_path = ''  # tc_path
-        self.tc_lang = tc_lang
-
-
-        self.true_false = true_false
-        self.new_xml_name = new_xml_name
-        self.scan_data_file = scan_data_file
 
         print('SCAN DATA FILE---', self.scan_data_file)
 
@@ -34,12 +32,15 @@ class Xmls(object):
         self.scan_data_files = []
         # list of xml projects
         self.xml_projects = []
+        # list of tc paths
+        self.tc_paths = []
 
         # create or clean xml dir
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
         self.get_test_case_paths(self.scan_data_files)
+        self.count_test_cases(self.xml_projects)
 
     def create_xml_dir(self):
         # create, or empty, 'xmls' folder
@@ -106,7 +107,7 @@ class Xmls(object):
                 tc_type = 'N/A'
 
             # get test case language
-            tc_lang = scan_data_file.rsplit('.', 4)[1].rsplit('_', 1)[1]
+            tc_lang = scan_data_file.rsplit('.', 4)[1].rsplit('_', 1)[1].lower()
 
             # create xml name from scan data file name
             base_name = os.path.basename(scan_data_file)
@@ -135,7 +136,7 @@ class Xmls(object):
                     root_list.append(root)
 
         for i, xml_project in enumerate(xml_projects):
-            # get the xml name for each project
+            # get the xml name for each project and use it's contents to grab the tc dir
             xml_name = getattr(self.xml_projects[i], 'new_xml_name')[:-4]
 
             key_list = xml_name.split('_')
@@ -143,6 +144,28 @@ class Xmls(object):
             for root in root_list:
                 if all(x in root for x in key_list):
                     # print('ROOT FOUND----------', root)
-                    setattr(self.xml_projects[i], 'tc_path', root.replace(os.getcwd(), ''))
-                    root_list.remove(root)
+                    setattr(self.xml_projects[i], 'tc_path', root.replace(os.getcwd(), '')[1:])
+                    # root_list.remove(root)
                     break
+
+    def count_test_cases(self, xml_projects):
+
+        test_case_files = []
+
+        for i, xml_project in enumerate(xml_projects):
+            tc_lang = getattr(self.xml_projects[i], 'tc_lang')
+            tc_path = os.path.join(os.getcwd(), getattr(self.xml_projects[i], 'tc_path'))
+
+            del test_case_files[:]
+
+            for root, dirs, files in os.walk(tc_path):
+                for file in files:
+                    if file.endswith(tc_lang):
+                        print('TEST CASE FILE', file)
+
+                        # reduce filename to test case name by removing variant and file extension
+                        file = re.sub('[a-z]?\.\w+$', '', file)
+                        test_case_files.append(file)
+
+            tc_count = len(set(test_case_files))
+            setattr(self.xml_projects[i], 'tc_count', tc_count)
