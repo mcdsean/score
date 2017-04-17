@@ -37,7 +37,7 @@ def format_workbook():
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 5
     ws2.column_dimensions['G'].width = 40
-    ws2.column_dimensions['H'].width = 66
+    ws2.column_dimensions['H'].width = 62
     ws2.column_dimensions['I'].width = 97
 
     # opp
@@ -584,7 +584,7 @@ def write_details(scan_data):
             tc_type = getattr(data1.xml_projects[i], attrib)
             ws2.cell(row=i + 2, column=j + 1).value = tc_type
             set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
-            ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
+            ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
 
     '''

@@ -39,7 +39,7 @@ class Xmls(object):
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
-        self.get_test_case_path(self.scan_data_files)
+        self.get_test_case_paths(self.scan_data_files)
 
     def create_xml_dir(self):
         # create, or empty, 'xmls' folder
@@ -122,19 +122,17 @@ class Xmls(object):
 
         return self.xml_projects
 
-    def get_test_case_path(self, xml_projects):
+    def get_test_case_paths(self, xml_projects):
 
         root_list = []
 
-        # todo: get only lowest folders containing cwe?
-        for root, dirs, files in os.walk('C:\\01\\juliet\\T'):
-            root_list.append(root)
-        for root, dirs, files in os.walk('C:\\01\\juliet\\F'):
-            root_list.append(root)
-        for root, dirs, files in os.walk('C:\\01\\kdm\\T'):
-            root_list.append(root)
-        for root, dirs, files in os.walk('C:\\01\\kdm\\F'):
-            root_list.append(root)
+        tc_types = ['juliet', 'kdm']
+
+        # get the lowest level, non-empty, paths for juliet and kdm
+        for tc_type in tc_types:
+            for root, dirs, files in os.walk(os.path.join(os.getcwd(), tc_type)):
+                if files and not dirs:
+                    root_list.append(root)
 
         for i, xml_project in enumerate(xml_projects):
             # get the xml name for each project
@@ -142,32 +140,9 @@ class Xmls(object):
 
             key_list = xml_name.split('_')
 
-            for root1 in root_list:
-                if all(x in root1 for x in key_list):
-                    print('ROOT FOUND----------', root1)
-                    cwd = os.getcwd()
-
-                    setattr(self.xml_projects[i], 'tc_path', root1.replace(os.getcwd(), ''))
-                    root_list.remove(root1)
-                    break
-
-    def get_test_case_path_1(self, xml_projects):
-
-        for i, xml_project in enumerate(xml_projects):
-
-            true_false = getattr(self.xml_projects[i], 'true_false')[:1]
-            xml_type = getattr(self.xml_projects[i], 'tc_type')
-            xml_name = getattr(self.xml_projects[i], 'new_xml_name')[:-4]
-            # todo: speed this up more by adding cwe
-
-            key_list = xml_name.split('_')
-
-            path = os.path.join(os.getcwd(), xml_type, true_false)
-
-            for root, dirs, files in os.walk(path):
-
-                # if all(x in root for x in key_list):
+            for root in root_list:
                 if all(x in root for x in key_list):
-                    print('ROOT----------', root)
+                    # print('ROOT FOUND----------', root)
                     setattr(self.xml_projects[i], 'tc_path', root.replace(os.getcwd(), ''))
+                    root_list.remove(root)
                     break
