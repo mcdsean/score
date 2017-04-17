@@ -552,10 +552,11 @@ def remove_dups(d):
 
 
 def sort(v):  # for sorting
-    return (v[0], v[1], v[7])
+    # return v[1], v[2], v[7]
+    return v[0]
 
 
-def write_details(scan_data):
+def write_details(data_details):
     #########################################################################################################
     detail_sheet_titles = ['CWE', 'Type', 'T/F', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'RAW Project File']
     #########################################################################################################
@@ -565,8 +566,12 @@ def write_details(scan_data):
     attribute_list = ['cwe_id_padded', 'tc_type', 'true_false', 'tc_count', 'num_of_hits', 'percent_hits',
                       'new_xml_name', 'tc_path', 'scan_data_file']
 
+
     # perform multi-column sorts
-    scan_data.sort(key=sort)
+    #scan_data.sort(key=sort)
+
+
+
 
     # freeze first row and column
     ws2.freeze_panes = ws2['B2']
@@ -579,10 +584,10 @@ def write_details(scan_data):
 
     # write detailed data
     for j, attrib in enumerate(attribute_list):
-        for i, xml_data in enumerate(data1.xml_projects):
-            # juliet of kdm
-            tc_type = getattr(data1.xml_projects[i], attrib)
-            ws2.cell(row=i + 2, column=j + 1).value = tc_type
+        for i, xml_data in enumerate(data_details.xml_projects):
+            # juliet or kdm
+            tc_attrib = getattr(data_details.xml_projects[i], attrib)
+            ws2.cell(row=i + 2, column=j + 1).value = tc_attrib
             set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
@@ -992,7 +997,7 @@ if __name__ == '__main__':
     '''
 
     # write to sheets
-    write_details(data)
+    write_details(data1)
 
     '''
     write_summary(data)

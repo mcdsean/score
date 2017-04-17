@@ -1,5 +1,7 @@
-import os, re, zipfile
+import os, re, zipfile, operator
+
 import py_common
+
 
 FVDL_NAME = "audit.fvdl"
 
@@ -41,6 +43,7 @@ class Xmls(object):
         self.get_xml_info(self.scan_data_files)
         self.get_test_case_paths(self.scan_data_files)
         self.count_test_cases(self.xml_projects)
+        self.sort_by_columns()
 
     def create_xml_dir(self):
         # create, or empty, 'xmls' folder
@@ -123,8 +126,10 @@ class Xmls(object):
 
         return self.xml_projects
 
+
     def get_test_case_paths(self, xml_projects):
 
+        key_list = []
         root_list = []
 
         tc_types = ['juliet', 'kdm']
@@ -136,36 +141,50 @@ class Xmls(object):
                     root_list.append(root)
 
         for i, xml_project in enumerate(xml_projects):
+            del key_list[:]
+
             # get the xml name for each project and use it's contents to grab the tc dir
             xml_name = getattr(self.xml_projects[i], 'new_xml_name')[:-4]
 
             key_list = xml_name.split('_')
+            key_list[0] = key_list[
+                              0] + '_'  # guard against confusion 'CWE78_' and 'CWE789_' #todo: this causes it to run a real long time but is probably not the real cause
 
             for root in root_list:
                 if all(x in root for x in key_list):
-                    # print('ROOT FOUND----------', root)
+                    print('ROOT FOUND----------', root)
                     setattr(self.xml_projects[i], 'tc_path', root.replace(os.getcwd(), '')[1:])
                     # root_list.remove(root)
                     break
+
 
     def count_test_cases(self, xml_projects):
 
         test_case_files = []
 
         for i, xml_project in enumerate(xml_projects):
+            tc_type = getattr(self.xml_projects[i], 'tc_type')
             tc_lang = getattr(self.xml_projects[i], 'tc_lang')
             tc_path = os.path.join(os.getcwd(), getattr(self.xml_projects[i], 'tc_path'))
 
-            del test_case_files[:]
+            if tc_type == 'juliet':
+                del test_case_files[:]
 
-            for root, dirs, files in os.walk(tc_path):
-                for file in files:
-                    if file.endswith(tc_lang):
-                        print('TEST CASE FILE', file)
+                for root, dirs, files in os.walk(tc_path):
+                    for file in files:
+                        if file.endswith(tc_lang):
+                            print('TEST CASE FILE', file)
 
-                        # reduce filename to test case name by removing variant and file extension
-                        file = re.sub('[a-z]?\.\w+$', '', file)
-                        test_case_files.append(file)
+                            # reduce filename to test case name by removing variant and file extension
+                            file = re.sub('[a-z]?\.\w+$', '', file)
+                            test_case_files.append(file)
 
-            tc_count = len(set(test_case_files))
-            setattr(self.xml_projects[i], 'tc_count', tc_count)
+                tc_count = len(set(test_case_files))
+                setattr(self.xml_projects[i], 'tc_count', tc_count)
+
+    def sort_by_columns(self):
+
+        # reverse the order of the desired sort priority #todo: consider moving this to another location
+        self.xml_projects.sort(key=operator.attrgetter('true_false'), reverse=False)
+        self.xml_projects.sort(key=operator.attrgetter('tc_type'))
+        self.xml_projects.sort(key=operator.attrgetter('cwe_id_padded'))
