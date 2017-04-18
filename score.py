@@ -36,9 +36,9 @@ def format_workbook():
     ws2.column_dimensions['D'].width = 5
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 5
-    ws2.column_dimensions['G'].width = 40
-    ws2.column_dimensions['H'].width = 62
-    ws2.column_dimensions['I'].width = 97
+    ws2.column_dimensions['G'].width = 45
+    ws2.column_dimensions['H'].width = 69
+    ws2.column_dimensions['I'].width = 105
 
     # opp
     ws3.column_dimensions['A'].width = 93
@@ -570,9 +570,6 @@ def write_details(data_details):
     # perform multi-column sorts
     #scan_data.sort(key=sort)
 
-
-
-
     # freeze first row and column
     ws2.freeze_panes = ws2['B2']
 
@@ -588,7 +585,7 @@ def write_details(data_details):
             # juliet or kdm
             tc_attrib = getattr(data_details.xml_projects[i], attrib)
             ws2.cell(row=i + 2, column=j + 1).value = tc_attrib
-            set_appearance(ws2, i + 2, 2, 'fg_fill', 'FFFFFF')
+            set_appearance(ws2, i + 2, j+ 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
 
