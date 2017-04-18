@@ -254,6 +254,111 @@ def paint_sheet(used_wid_list):
         set_appearance(ws, 3, 3, 'fg_fill', 'F4B084')
 
 
+def get_data(src_path, dest_path):
+    # container to hold one slot of data per scan
+    data_list = []
+    juliet_f_hits_total = []
+
+    used_weakness_ids_total = []
+    used_unique_ids = []
+
+    # kdm_counts_and_path = []
+    # juliet_counts_and_path = []
+
+    create_or_clean_xml_dir(dest_path)
+
+    # fortify files are not in standard xml format
+    if TOOL_NAME == 'fortify':
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
+    else:
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
+
+    for scan_data_file in scan_data_files:
+
+        # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
+        if '\\T\\' in scan_data_file:
+            t_f = 'TRUE'
+        else:
+            t_f = 'FALSE'
+
+        proj_name = os.path.basename(scan_data_file)
+        proj_sub_name = proj_name.rsplit('.', 2)[1]
+
+        if 'juliet' in scan_data_file:
+            test_case_type = 'juliet'
+            xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
+        elif 'kdm' in scan_data_file:
+            test_case_type = 'kdm'
+            xml_name = proj_sub_name + '_' + test_case_type + '.xml'
+        else:
+            print('NO TEST CASE TYPE FOUND!')
+
+        if TOOL_NAME == 'fortify':
+            extract_fvdl_from_fpr(scan_data_file, dest_path)
+
+        # format xml name
+        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
+        new_path_to_xml = os.path.join(dest_path, xml_name)
+        # create fresh xml name
+        os.rename(tool_path_to_xml, new_path_to_xml)
+
+        # get cwe number from project name
+        match = re.search('CWE\d+', proj_name)
+        cwe_num = match.group(0)[3:].lstrip('0')
+        cwe_padded = 'CWE' + cwe_num.zfill(3)
+
+        '''
+        # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
+        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num, test_case_type, t_f)
+        used_weakness_ids_total += used_weakness_ids
+        juliet_f_hits_total += juliet_f_hits
+        used_unique_ids = remove_dups(used_weakness_ids_total)
+
+        # juliet
+        if test_case_type == 'juliet':
+            juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
+
+            # for juliet false test cases, use opps vs test case count
+            if t_f == 'TRUE':
+                juliet_count = juliet_counts_and_path[0]
+            elif t_f == 'FALSE':
+                # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
+                # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+                opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
+                juliet_count = sum(opps_per_test_case.values())
+            else:
+                print('TRUE/FALSE NOT FOUND')
+
+            juliet_path = juliet_counts_and_path[1]
+            if juliet_count != 0:
+                percent_hits = (score / juliet_count) * 100
+            else:
+                percent_hits = 0
+            data_list.append(
+                [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
+                 proj_name])
+
+        # kdm
+        if test_case_type == 'kdm':
+            kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
+            kdm_count = kdm_counts_and_path[0]
+            kdm_path = kdm_counts_and_path[1]
+            if kdm_count != 0:
+                percent_hits = (score / kdm_count) * 100
+            else:
+                percent_hits = 0
+            data_list.append(
+                [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
+                 proj_name])
+
+    paint_sheet(used_unique_ids)
+
+    write_opp_counts_to_sheet(juliet_f_hits_total)
+    '''
+
+    return data_list
+
+
 def auto_score(xml_path, cwe_no, test_case_type, test_case_t_f):
     i = 0
     ns = {}
@@ -835,111 +940,6 @@ def dedup_multi_dim_list(mylist):
             newlist.append(item)
             seen.add(t)
     return newlist
-
-
-def get_data(src_path, dest_path):
-    # container to hold one slot of data per scan
-    data_list = []
-    juliet_f_hits_total = []
-
-    used_weakness_ids_total = []
-    used_unique_ids = []
-
-    # kdm_counts_and_path = []
-    # juliet_counts_and_path = []
-
-    create_or_clean_xml_dir(dest_path)
-
-    # fortify files are not in standard xml format
-    if TOOL_NAME == 'fortify':
-        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
-    else:
-        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
-
-    for scan_data_file in scan_data_files:
-
-        # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
-        if '\\T\\' in scan_data_file:
-            t_f = 'TRUE'
-        else:
-            t_f = 'FALSE'
-
-        proj_name = os.path.basename(scan_data_file)
-        proj_sub_name = proj_name.rsplit('.', 2)[1]
-
-        if 'juliet' in scan_data_file:
-            test_case_type = 'juliet'
-            xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
-        elif 'kdm' in scan_data_file:
-            test_case_type = 'kdm'
-            xml_name = proj_sub_name + '_' + test_case_type + '.xml'
-        else:
-            print('NO TEST CASE TYPE FOUND!')
-
-        if TOOL_NAME == 'fortify':
-            extract_fvdl_from_fpr(scan_data_file, dest_path)
-
-        # format xml name
-        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-        new_path_to_xml = os.path.join(dest_path, xml_name)
-        # create fresh xml name
-        os.rename(tool_path_to_xml, new_path_to_xml)
-
-        # get cwe number from project name
-        match = re.search('CWE\d+', proj_name)
-        cwe_num = match.group(0)[3:].lstrip('0')
-        cwe_padded = 'CWE' + cwe_num.zfill(3)
-
-        '''
-        # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
-        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num, test_case_type, t_f)
-        used_weakness_ids_total += used_weakness_ids
-        juliet_f_hits_total += juliet_f_hits
-        used_unique_ids = remove_dups(used_weakness_ids_total)
-
-        # juliet
-        if test_case_type == 'juliet':
-            juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
-
-            # for juliet false test cases, use opps vs test case count
-            if t_f == 'TRUE':
-                juliet_count = juliet_counts_and_path[0]
-            elif t_f == 'FALSE':
-                # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
-                # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-                opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
-                juliet_count = sum(opps_per_test_case.values())
-            else:
-                print('TRUE/FALSE NOT FOUND')
-
-            juliet_path = juliet_counts_and_path[1]
-            if juliet_count != 0:
-                percent_hits = (score / juliet_count) * 100
-            else:
-                percent_hits = 0
-            data_list.append(
-                [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
-                 proj_name])
-
-        # kdm
-        if test_case_type == 'kdm':
-            kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
-            kdm_count = kdm_counts_and_path[0]
-            kdm_path = kdm_counts_and_path[1]
-            if kdm_count != 0:
-                percent_hits = (score / kdm_count) * 100
-            else:
-                percent_hits = 0
-            data_list.append(
-                [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
-                 proj_name])
-
-    paint_sheet(used_unique_ids)
-
-    write_opp_counts_to_sheet(juliet_f_hits_total)
-    '''
-
-    return data_list
 
 
 if __name__ == '__main__':
