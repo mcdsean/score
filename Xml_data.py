@@ -18,11 +18,10 @@ class Xml(object):
         self.num_of_hits = ''  # num_of_hits
         self.percent_hits = ''  # percent_hits
         self.tc_path = ''  # tc_path
-
+        self.acceptable_weakness_ids = []  # weakness_ids
         print('PROJECT FILE---', self.scan_data_file)
 
-
-class Xmls(object):
+class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):
         self.source_path = source_path
         self.dest_path = dest_path
@@ -30,17 +29,23 @@ class Xmls(object):
 
         # raw file produced by tool
         self.scan_data_files = []
-        # list of xml projects
+        # list of xml project objects
         self.xml_projects = []
         # list of tc paths
         self.tc_paths = []
+
+        # runtime attributes
+        self.tag_info = []
+        self.acceptable_weakness_ids_full_list = []
 
         # create or clean xml dir
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
+        # get the test case counts
         self.get_test_case_paths_and_counts(self.scan_data_files)
-        #self.count_test_cases(self.xml_projects)
+        # import the weakness ids from vendor input sheet
+        #self.import_weakness_ids(self.scan_data_files)
         self.sort_by_columns()
 
     def create_xml_dir(self):
@@ -67,21 +72,6 @@ class Xmls(object):
         else:
             self.scan_data_files = py_common.find_files_in_dir(self.source_path, '.*?\.xml$')
 
-    def copy_xml_file(self, scan_data_file, new_xml_name):
-
-        if self.tool_name == 'fortify':
-            # self.extract_fvdl_from_fpr(scan_data_file, self.dest_path)
-
-            # fortify .fpr files need unzipped to get the xml
-            myzip = zipfile.ZipFile(scan_data_file, mode='r')
-            myzip.extract(FVDL_NAME, path=self.dest_path)
-            myzip.close()
-
-        # format xml name
-        tool_path_to_xml = os.path.join(self.dest_path, FVDL_NAME)
-        new_path_to_xml = os.path.join(self.dest_path, new_xml_name)
-        # create fresh xml name
-        os.rename(tool_path_to_xml, new_path_to_xml)
 
     def get_xml_info(self, scan_data_files):
 
@@ -121,13 +111,29 @@ class Xmls(object):
 
             cwe_id_padded = 'CWE' + cwe_num.zfill(3)
 
-            self.xml_projects.append(
-                Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
+            self.xml_projects.append(Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
 
         return self.xml_projects
 
 
-    def get_test_case_paths_and_counts(self, xml_projects):
+    def copy_xml_file(self, scan_data_file, new_xml_name):
+
+        if self.tool_name == 'fortify':
+            # self.extract_fvdl_from_fpr(scan_data_file, self.dest_path)
+
+            # fortify .fpr files need unzipped to get the xml
+            myzip = zipfile.ZipFile(scan_data_file, mode='r')
+            myzip.extract(FVDL_NAME, path=self.dest_path)
+            myzip.close()
+
+        # format xml name
+        tool_path_to_xml = os.path.join(self.dest_path, FVDL_NAME)
+        new_path_to_xml = os.path.join(self.dest_path, new_xml_name)
+        # create fresh xml name
+        os.rename(tool_path_to_xml, new_path_to_xml)
+
+
+    def get_test_case_paths_and_counts(self, scan_data_files):
 
         key_list = []
         root_list = []
@@ -140,7 +146,7 @@ class Xmls(object):
                 if files and not dirs:
                     root_list.append(root)
 
-        for i, xml_project in enumerate(xml_projects):
+        for i, xml_project in enumerate(scan_data_files):
             del key_list[:]
 
             # get the xml name for each project and use it's contents to grab the tc dir
@@ -160,6 +166,7 @@ class Xmls(object):
                     self.count_test_cases(project_id, tc_path)
                     # root_list.remove(root) #todo: this was intended to speed up searches but left some fields blank in the spreadsheet (delete or troubleshoot)
                     break
+
 
     def count_test_cases(self, projedt_id, tc_path):
         test_case_files = []
@@ -186,9 +193,30 @@ class Xmls(object):
         tc_count = len(set(test_case_files))
         setattr(self.xml_projects[projedt_id], 'tc_count', tc_count)
 
+
+    # def import_weakness_ids(self, scan_data_files):
+    #     cwe_weakness_ids = []
+    #
+    #     ws = wb['Weakness IDs']
+    #
+    #     # get weakness ids from duplicated vendor sheet
+    #     for row_idx in ws.iter_rows():
+    #         for cell in row_idx:
+    #             if str(cell.value) == cwe.lstrip('0'):
+    #                 for cell in row_idx:
+    #                     cwe_weakness_ids.append(cell.value)
+    #
+    #                 return cwe_weakness_ids
+
+
     def sort_by_columns(self):
 
         # reverse the order of the desired sort priority #todo: consider moving this to another location
         self.xml_projects.sort(key=operator.attrgetter('true_false'), reverse=False)
         self.xml_projects.sort(key=operator.attrgetter('tc_type'))
         self.xml_projects.sort(key=operator.attrgetter('cwe_id_padded'))
+
+
+
+
+

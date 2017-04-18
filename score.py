@@ -8,7 +8,7 @@ import sys, os, re, argparse, shutil, py_common
 import xml.etree.ElementTree as ET
 import subprocess, zipfile
 
-from Xml_data import Xmls
+from Xml_data import Suite
 
 from time import strftime
 from openpyxl import load_workbook
@@ -410,7 +410,7 @@ def auto_score(xml_path, cwe_no, test_case_type, test_case_t_f):
         i += 1
 
     # get acceptable weakness id groups
-    acceptable_weaknesses = get_weakness_ids(cwe_no)
+    acceptable_weaknesses = import_weakness_ids(cwe_no)
     for acceptable_weakness in acceptable_weaknesses:
         acceptable_groups.append(str(acceptable_weakness).split(':'))
 
@@ -847,25 +847,6 @@ def write_summary(scan_data):
         ws1.cell(row=row, column=7).number_format = '0.00'
 
 
-def import_xml_tags():
-    row = 0
-
-    ws = wb.get_sheet_by_name('XML Tags')
-    row_count = ws.max_row
-    col_count = ws.max_column
-
-    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-
-    for row_idx in ws.iter_rows():
-        col = 0
-        for cell in row_idx:
-            tag_ids[row][col] = str(cell.value)
-            col += 1
-        row += 1
-
-    return tag_ids
-
-
 def set_appearance(ws_id, row_id, col_id, style_id, color_id):
     cell = ws_id.cell(row=row_id, column=col_id)
 
@@ -904,21 +885,6 @@ def create_summary_chart():
     ws1.add_chart(chart1, 'H2')
 
 
-def get_weakness_ids(cwe):
-    cwe_weakness_ids = []
-
-    ws = wb['Weakness IDs']
-
-    # get weakness ids from duplicated vendor sheet
-    for row_idx in ws.iter_rows():
-        for cell in row_idx:
-            if str(cell.value) == cwe.lstrip('0'):
-                for cell in row_idx:
-                    cwe_weakness_ids.append(cell.value)
-
-                return cwe_weakness_ids
-
-
 def write_opp_counts_to_sheet(juliet_f_hits):
     op_sheet_list = []
 
@@ -940,6 +906,56 @@ def dedup_multi_dim_list(mylist):
             newlist.append(item)
             seen.add(t)
     return newlist
+
+
+def import_weakness_ids(suite_dat):
+
+    #todo: consider consolidating this function with 'import_xml_tags'
+    row = 0
+
+    ws = wb.get_sheet_by_name('Weakness IDs')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    weakness_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    # put all weakness ids into 'weakness_ids' list
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            weakness_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+        # create a full list for the suite object
+        setattr(suite_dat, 'acceptable_weakness_ids_full_list', weakness_ids)
+
+    # add weakness ids to each xml object
+    for i, xml_project in enumerate(suite_dat.xml_projects):
+        cwe_num = getattr(xml_project, 'cwe_num')
+        for weakness_id in weakness_ids:
+            if weakness_id[0] == cwe_num:
+                setattr(xml_project, 'acceptable_weakness_ids', weakness_id)
+                break
+
+
+def import_xml_tags(suite_dat):
+
+    row = 0
+
+    ws = wb.get_sheet_by_name('XML Tags')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            tag_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+
+    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 if __name__ == '__main__':
@@ -982,19 +998,17 @@ if __name__ == '__main__':
     # get scan data and save it to the new xml path
     #data = get_data(scaned_data_path, new_xml_path)
 
+    # instanciate a suite object
+    suite_data = Suite(scaned_data_path, new_xml_path, TOOL_NAME)
 
-    data1 = Xmls(scaned_data_path, new_xml_path, TOOL_NAME)
+    # import tag data
+    import_xml_tags(suite_data)
+    # import weakness ids
+    import_weakness_ids(suite_data)
 
-    '''
-    for idx, tag in enumerate(data1.xml_projects):
-        data2 = data1.xml_projects[idx].__getattribute__('new_xml_name')
-        data3 = getattr(data1.xml_projects[idx], 'tc_type')
-        print('data2', data2)
-        print('data3', data3)
-    '''
 
     # write to sheets
-    write_details(data1)
+    write_details(suite_data)
 
     '''
     write_summary(data)
