@@ -27,7 +27,7 @@ class Suite(object):
         self.dest_path = dest_path
         self.tool_name = tool_name
 
-        # raw file produced by tool
+        # raw file produced by scanner
         self.scan_data_files = []
         # list of xml project objects
         self.xml_projects = []
@@ -37,6 +37,7 @@ class Suite(object):
         # runtime attributes
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
+        self.name_space = ''
 
         # create or clean xml dir
         self.create_xml_dir()
