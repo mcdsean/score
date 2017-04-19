@@ -307,9 +307,9 @@ def get_data(src_path, dest_path):
         cwe_num = match.group(0)[3:].lstrip('0')
         cwe_padded = 'CWE' + cwe_num.zfill(3)
 
-
         # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
-        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num, test_case_type, t_f)
+        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num,
+                                                                                     test_case_type, t_f)
         used_weakness_ids_total += used_weakness_ids
         juliet_f_hits_total += juliet_f_hits
         used_unique_ids = remove_dups(used_weakness_ids_total)
@@ -355,23 +355,182 @@ def get_data(src_path, dest_path):
 
     write_opp_counts_to_sheet(juliet_f_hits_total)
 
-
     return data_list
 
 
-def set_name_space(suite_dat):
+def parse_xml_ORIGINAL(suite_dat):
+    ns = {}
+    weakness_id_schemas = []
+    tag_ids = getattr(suite_dat, 'tag_info')
+    finding_type_schema = ''
+    file_line_schema = ''
+
+    for xml_project in suite_data.xml_projects:
+        # read namespace from the first xml since it will be the same for all other xmls
+        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+
+        # ns = getattr(suite_data, 'name_space')
+
+        # get xml schemas from vendor input file
+        for idx, tag in enumerate(tag_ids):
+            schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
+            if idx == 1:
+                finding_type_schema = schema
+            if idx == 2:
+                file_name_schema = schema
+            if idx == 3:
+                file_line_schema = schema
+            if idx > 3:
+                weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
+
+        for vuln in root.findall('./' + finding_type_schema, ns):
+            # weakness id parts #todo: make these weakness id names generic
+            kingdom = vuln.find(weakness_id_schemas[0], ns)
+            type = vuln.find(weakness_id_schemas[1], ns)
+            subtype = vuln.find(weakness_id_schemas[2], ns)
+
+            attribute = True
+            if attribute:
+                # file name
+                schema = file_name_schema.rsplit('/', 1)[0]
+                attrib = file_name_schema.rsplit(':', 1)[1]
+                filepath = vuln.find(schema, ns).attrib[attrib]
+                filename = os.path.basename(filepath)
+
+                juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(
+                    filepath))  # todo: look into doing this vs current method
+
+                # file line
+                attrib = file_line_schema.rsplit('/', 1)[1][4:]
+                fileline = vuln.find(schema, ns).attrib[attrib]
+
+            print(kingdom)
+
+            # set the suite object name space attribute
+            # setattr(suite_dat, 'name_space', ns)
+
+
+def parse_xml(suite_dat):
 
     ns = {}
+    weakness_ids = []
+    weakness_id_schemas = []
+    acceptable_wids = []
+    finding_type_schema = ''
+    file_name_schema = ''
+    file_name_attrib = ''
+    line_number_schema = ''
+    line_number_attrib = ''
 
-    # read namespace from the first xml since it will be the same for all other xmls
-    xml_path = os.path.join(os.getcwd(), 'xmls', getattr(suite_data.xml_projects[0],'new_xml_name'))
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+    tag_ids = getattr(suite_dat, 'tag_info')
 
-    # set the suite object name space attribute
-    setattr(suite_dat, 'name_space', ns)
+    for xml_project in suite_data.xml_projects:
+        # read namespace from the first xml since it will be the same for all other xmls
+        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
 
+        # ns = getattr(suite_data, 'name_space')
+
+        # get xml schemas from vendor input file
+        for idx, content in enumerate(tag_ids):
+
+            schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
+
+            # finding type
+            if content[0].lower() == 'finding_type':
+                if content[2].lower() == 'tag':
+                    finding_type_schema = schema
+                continue
+            # file name
+            if content[0].lower() == 'file_name':
+                if content[2].lower() == 'tag':
+                    file_name_schema = schema
+                elif content[2].lower() == 'attribute':
+                    file_name_schema = schema.rsplit('/', 1)[0]
+                    file_name_attrib = schema.rsplit(':', 1)[1]
+                continue
+            # line number
+            if content[0].lower() == 'line_number':
+                if content[2].lower() == 'tag':
+                    line_number_schema = schema
+                elif content[2].lower() == 'attribute':
+                    line_number_schema = schema.rsplit('/', 1)[0]
+                    line_number_attrib = schema.rsplit(':', 1)[1]
+                continue
+            # weakness ids
+            if 'weakness' in content[0].lower():
+                weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
+
+        for vuln in root.findall('./' + finding_type_schema, ns):
+            #todo: add condition for tag vs attribute; need flags in switch statement above
+            del weakness_ids[:]
+            # get path and line number of each hit
+            file_path = vuln.find(file_name_schema, ns).attrib[file_name_attrib]
+            line_number = vuln.find(line_number_schema, ns).attrib[line_number_attrib]
+            filename = os.path.basename(file_path)
+
+            # get weakness id(s) of each hit
+            for idx, weakness_id in enumerate(weakness_id_schemas):
+                wid = vuln.find(weakness_id_schemas[idx], ns)
+                if wid is not None:
+                    weakness_ids.append(wid.text)
+
+            acceptable_wids = getattr(xml_project, 'acceptable_weakness_ids')
+
+            if any(weakness_ids[0] in s for s in acceptable_wids):
+
+                print('FOUND WID:', weakness_ids[0], 'IN ACCEPTABLE IDS:', acceptable_wids)
+
+
+
+            # set the suite object name space attribute #todo: keep this?
+            setattr(suite_dat, 'name_space', ns)
+
+
+def import_xml_tags_ORIGINAL(suite_dat):
+    row = 0
+
+    parse_xml(suite_dat)
+    ns = getattr(suite_data, 'name_space')
+
+    ws = wb.get_sheet_by_name('XML Tags')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            tag_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+
+    setattr(suite_dat, 'tag_info', tag_ids)
+
+
+def import_xml_tags(suite_dat):
+    row = 0
+
+    ws = wb.get_sheet_by_name('XML Tags')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            tag_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+
+    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 def auto_score(suite_dat):
@@ -381,8 +540,6 @@ def auto_score(suite_dat):
 
     opps_per_test_case = {}
 
-
-    '''
     # get xml schema from vendor input file
     for idx, tag in enumerate(tag_ids):
         if idx == 1:
@@ -404,9 +561,9 @@ def auto_score(suite_dat):
     acceptable_weaknesses = import_weakness_ids(cwe_no)
     for acceptable_weakness in acceptable_weaknesses:
         acceptable_groups.append(str(acceptable_weakness).split(':'))
-    '''
 
-    '''
+
+
     juliet_f_tc_type = False
     first_time_thru_project = True
     juliet_f_tc_hits = []
@@ -417,7 +574,6 @@ def auto_score(suite_dat):
     weakness_id_schemas = []
     de_duped_used_wid_list = []
 
-    
     # get opp counts for juliet-false only
     if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
         # get opp counts per test case
@@ -425,15 +581,15 @@ def auto_score(suite_dat):
         # count hits per test cases (<= oc)
         juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
         opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-    '''
 
+    '''
     # read namespace from xml
     tree = ET.parse(xml_path)
     root = tree.getroot()
     ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+    '''
 
     tag_ids = import_xml_tags()
-
 
     # parse this xml
     for vuln in root.findall('./' + finding_type, ns):
@@ -445,7 +601,7 @@ def auto_score(suite_dat):
             'line']  # todo: 'line' hardcoded for now and not all tools may have this
         filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
         filename = os.path.basename(filepath)
-        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
+        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))#todo: keep this for another possible approach. Faster?
 
         '''
         # get opp counts for juliet-false only
@@ -868,7 +1024,7 @@ def write_details(data_details):
             # juliet or kdm
             tc_attrib = getattr(data_details.xml_projects[i], attrib)
             ws2.cell(row=i + 2, column=j + 1).value = tc_attrib
-            set_appearance(ws2, i + 2, j+ 2, 'fg_fill', 'FFFFFF')
+            set_appearance(ws2, i + 2, j + 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
 
@@ -1087,8 +1243,7 @@ def dedup_multi_dim_list(mylist):
 
 
 def import_weakness_ids(suite_dat):
-
-    #todo: consider consolidating this function with 'import_xml_tags'
+    # todo: consider consolidating this function with 'import_xml_tags'
     row = 0
 
     ws = wb.get_sheet_by_name('Weakness IDs')
@@ -1114,33 +1269,6 @@ def import_weakness_ids(suite_dat):
             if weakness_id[0] == cwe_num:
                 setattr(xml_project, 'acceptable_weakness_ids', weakness_id)
                 break
-
-
-def import_xml_tags(suite_dat):
-
-    row = 0
-
-    set_name_space(suite_dat)
-    ns = getattr(suite_data, 'name_space')
-
-    print(ns)
-
-    #todo: ************************************pick up here
-
-    ws = wb.get_sheet_by_name('XML Tags')
-    row_count = ws.max_row
-    col_count = ws.max_column
-
-    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-
-    for row_idx in ws.iter_rows():
-        col = 0
-        for cell in row_idx:
-            tag_ids[row][col] = str(cell.value)
-            col += 1
-        row += 1
-
-    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 if __name__ == '__main__':
@@ -1188,8 +1316,10 @@ if __name__ == '__main__':
 
     # import tag data
     import_xml_tags(suite_data)
+
     # import weakness ids
     import_weakness_ids(suite_data)
+    parse_xml(suite_data)
     # score the data
     #auto_score(suite_data)
 
@@ -1201,7 +1331,7 @@ if __name__ == '__main__':
     write_summary(data)
     create_summary_chart()
     '''
-    #wb.active = 0 #todo: return to this value after debug
+    # wb.active = 0 #todo: return to this value after debug
     wb.active = 1
     wb.save(scorecard)
 

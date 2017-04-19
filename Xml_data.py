@@ -14,12 +14,14 @@ class Xml(object):
         self.new_xml_name = new_xml_name
         self.scan_data_file = scan_data_file
         # runtime attributes
-        self.tc_count = ''  # tc_count
-        self.num_of_hits = ''  # num_of_hits
-        self.percent_hits = ''  # percent_hits
-        self.tc_path = ''  # tc_path
-        self.acceptable_weakness_ids = []  # weakness_ids
+        self.tc_count = ''
+        self.num_of_hits = ''
+        self.percent_hits = ''
+        self.tc_path = ''
+        self.acceptable_weakness_ids = []
+
         print('PROJECT FILE---', self.scan_data_file)
+
 
 class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):
@@ -35,9 +37,9 @@ class Suite(object):
         self.tc_paths = []
 
         # runtime attributes
+        self.name_space = ''
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
-        self.name_space = ''
 
         # create or clean xml dir
         self.create_xml_dir()
@@ -46,7 +48,7 @@ class Suite(object):
         # get the test case counts
         self.get_test_case_paths_and_counts(self.scan_data_files)
         # import the weakness ids from vendor input sheet
-        #self.import_weakness_ids(self.scan_data_files)
+        # self.import_weakness_ids(self.scan_data_files)
         self.sort_by_columns()
 
     def create_xml_dir(self):
@@ -99,11 +101,12 @@ class Suite(object):
             # get test case type
             if 'juliet' in scan_data_file:
                 tc_type = 'juliet'
-                #suffix = '_' + true_false[:1] + '_' + 'juliet'
+                # suffix = '_' + true_false[:1] + '_' + 'juliet'
                 new_xml_name = str(base_name.rsplit('.', 2)[1]) + '_' + true_false[:1] + '_' + 'juliet' + '.xml'
             elif 'kdm' in scan_data_file:
                 tc_type = 'kdm'
-                new_xml_name = re.sub('(_[TF]_)', '_', str(base_name.rsplit('.', 2)[1])) + '_' + true_false[:1] + '_' + 'kdm' + '.xml'
+                new_xml_name = re.sub('(_[TF]_)', '_', str(base_name.rsplit('.', 2)[1])) + '_' + true_false[
+                                                                                                 :1] + '_' + 'kdm' + '.xml'
             else:
                 tc_type = 'N/A'
                 new_xml_name = 'N/A'
@@ -112,10 +115,10 @@ class Suite(object):
 
             cwe_id_padded = 'CWE' + cwe_num.zfill(3)
 
-            self.xml_projects.append(Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
+            self.xml_projects.append(
+                Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
 
         return self.xml_projects
-
 
     def copy_xml_file(self, scan_data_file, new_xml_name):
 
@@ -132,7 +135,6 @@ class Suite(object):
         new_path_to_xml = os.path.join(self.dest_path, new_xml_name)
         # create fresh xml name
         os.rename(tool_path_to_xml, new_path_to_xml)
-
 
     def get_test_case_paths_and_counts(self, scan_data_files):
 
@@ -155,19 +157,18 @@ class Suite(object):
 
             key_list = xml_name.split('_')
             if 'kdm' in xml_name and 'CWE123' in key_list[0]:
-                key_list[0] = 'CWE123a' # account for kdm 123a naming anomaly
+                key_list[0] = 'CWE123a'  # account for kdm 123a naming anomaly
             key_list[0] = key_list[0] + '_'  # guard against confusion 'CWE78_' and 'CWE789_'
 
             for root in root_list:
                 if all(x in root for x in key_list):
-                    #print('TC PATH FOUND----------', root)
+                    # print('TC PATH FOUND----------', root)
                     tc_path = root.replace(os.getcwd(), '')[1:]
                     setattr(self.xml_projects[i], 'tc_path', tc_path)
                     project_id = i
                     self.count_test_cases(project_id, tc_path)
                     # root_list.remove(root) #todo: this was intended to speed up searches but left some fields blank in the spreadsheet (delete or troubleshoot)
                     break
-
 
     def count_test_cases(self, projedt_id, tc_path):
         test_case_files = []
@@ -194,7 +195,6 @@ class Suite(object):
         tc_count = len(set(test_case_files))
         setattr(self.xml_projects[projedt_id], 'tc_count', tc_count)
 
-
     # def import_weakness_ids(self, scan_data_files):
     #     cwe_weakness_ids = []
     #
@@ -216,8 +216,3 @@ class Suite(object):
         self.xml_projects.sort(key=operator.attrgetter('true_false'), reverse=False)
         self.xml_projects.sort(key=operator.attrgetter('tc_type'))
         self.xml_projects.sort(key=operator.attrgetter('cwe_id_padded'))
-
-
-
-
-
