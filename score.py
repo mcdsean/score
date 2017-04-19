@@ -374,6 +374,7 @@ def parse_xml(suite_dat):
 
         # ns = getattr(suite_data, 'name_space')
 
+        # todo: pick up here****************************************************************
         # get xml schemas from vendor input file
         for idx, tag in enumerate(tag_ids):
             schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
@@ -418,10 +419,6 @@ def import_xml_tags_ORIGINAL(suite_dat):
 
     parse_xml(suite_dat)
     ns = getattr(suite_data, 'name_space')
-
-    print(ns)
-
-    # todo: ************************************pick up here
 
     ws = wb.get_sheet_by_name('XML Tags')
     row_count = ws.max_row
