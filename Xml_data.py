@@ -19,6 +19,7 @@ class Xml(object):
         self.percent_hits = ''
         self.tc_path = ''
         self.acceptable_weakness_ids = []
+        self.found_weakness_ids = []
 
         print('PROJECT FILE---', self.scan_data_file)
 
@@ -162,11 +163,11 @@ class Suite(object):
 
             for root in root_list:
                 if all(x in root for x in key_list):
-                    # print('TC PATH FOUND----------', root)
+                    print('TC PATH FOUND----------', root)
                     tc_path = root.replace(os.getcwd(), '')[1:]
                     setattr(self.xml_projects[i], 'tc_path', tc_path)
                     project_id = i
-                    self.count_test_cases(project_id, tc_path)
+                    #self.count_test_cases(project_id, tc_path)
                     # root_list.remove(root) #todo: this was intended to speed up searches but left some fields blank in the spreadsheet (delete or troubleshoot)
                     break
 
