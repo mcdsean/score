@@ -47,187 +47,187 @@ def format_workbook():
     ws3.column_dimensions['D'].width = 11
 
 
-# def count_kdm_test_cases(fpr_name):
-#     full_path = ""
-#     beginning_of_path = ""
-#     end_of_path = ""
-#     found = False
-#     test_cases_files = []  # reserved for alt counting approach
-#     path_and_count = []
-#     t_f = ""
-#
-#     if "\\T\\" in fpr_name:
-#         t_f = "T"
-#     else:
-#         t_f = "F"
-#
-#     beginning_of_path = fpr_name.rsplit("\\", 4)[0]
-#     beginning_of_path = beginning_of_path + "\\kdm\\" + t_f
-#
-#     dir_info = fpr_name.rsplit(".", 2)[1]
-#     cwe_ = dir_info.split("_")[0] + "_"
-#
-#     if "123" in cwe_:
-#         cwe_ = "123a_"
-#
-#     bin = fpr_name.rsplit("_", 1)[1][:-4]
-#     depth = "Depth_" + fpr_name.rsplit("_", 2)[1]
-#
-#     complexity = fpr_name.rsplit("_", 4)[1]
-#
-#     end_of_path = "Language_C\\" + complexity + "\\" + depth + "\\" + bin
-#
-#     # for root,dirs,files in os.walk(path):
-#     for root, dirs, files in os.walk(beginning_of_path):
-#
-#         for dir in dirs:
-#
-#             if cwe_ in dir:
-#
-#                 full_path = beginning_of_path + "\\" + dir + "\\" + end_of_path
-#
-#                 for path, dirs, files in os.walk(full_path):
-#
-#                     for file in files:
-#
-#                         if not file.endswith(".h") and not file.endswith("_a.c") and not file.endswith(
-#                                 ".obj") and file.startswith("SFP"):
-#                             full_path_and_filename = os.path.join(full_path, file)
-#                             test_cases_files.append(full_path_and_filename)
-#                 found = True
-#
-#         if found:
-#             break
-#
-#     # get the total unique hits per test case
-#     score = len(set(test_cases_files))
-#
-#     path_and_count.extend([score, full_path])
-#
-#     return path_and_count
+def count_kdm_test_cases(fpr_name):
+    full_path = ""
+    beginning_of_path = ""
+    end_of_path = ""
+    found = False
+    test_cases_files = []  # reserved for alt counting approach
+    path_and_count = []
+    t_f = ""
+
+    if "\\T\\" in fpr_name:
+        t_f = "T"
+    else:
+        t_f = "F"
+
+    beginning_of_path = fpr_name.rsplit("\\", 4)[0]
+    beginning_of_path = beginning_of_path + "\\kdm\\" + t_f
+
+    dir_info = fpr_name.rsplit(".", 2)[1]
+    cwe_ = dir_info.split("_")[0] + "_"
+
+    if "123" in cwe_:
+        cwe_ = "123a_"
+
+    bin = fpr_name.rsplit("_", 1)[1][:-4]
+    depth = "Depth_" + fpr_name.rsplit("_", 2)[1]
+
+    complexity = fpr_name.rsplit("_", 4)[1]
+
+    end_of_path = "Language_C\\" + complexity + "\\" + depth + "\\" + bin
+
+    # for root,dirs,files in os.walk(path):
+    for root, dirs, files in os.walk(beginning_of_path):
+
+        for dir in dirs:
+
+            if cwe_ in dir:
+
+                full_path = beginning_of_path + "\\" + dir + "\\" + end_of_path
+
+                for path, dirs, files in os.walk(full_path):
+
+                    for file in files:
+
+                        if not file.endswith(".h") and not file.endswith("_a.c") and not file.endswith(
+                                ".obj") and file.startswith("SFP"):
+                            full_path_and_filename = os.path.join(full_path, file)
+                            test_cases_files.append(full_path_and_filename)
+                found = True
+
+        if found:
+            break
+
+    # get the total unique hits per test case
+    score = len(set(test_cases_files))
+
+    path_and_count.extend([score, full_path])
+
+    return path_and_count
 
 
-# def count_juliet_test_cases(fpr_name):
-#     count = 0
-#     full_path = ""
-#     found = False
-#     test_cases = []
-#     path_and_count = []
-#     juliet_tc_path = ""
-#     t_f = ""
-#
-#     # get juliet regex
-#     regex = py_common.get_primary_testcase_filename_regex()
-#
-#     if "\\T\\" in fpr_name:
-#         t_f = "T"
-#     else:
-#         t_f = "F"
-#
-#     juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
-#     juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
-#
-#     dir_info = fpr_name.rsplit(".", 2)[1]
-#     cwe_ = dir_info.split("_")[0] + "_"
-#
-#     if "_" in dir_info:
-#         sub_dir = dir_info.split("_")[1]
-#     else:
-#         sub_dir = "none"
-#
-#     for root, dirs, files in os.walk(juliet_tc_path):
-#
-#         for dir in dirs:
-#
-#             full_path = root + "\\" + dir
-#
-#             if sub_dir != "none":
-#                 if (cwe_ in full_path) and (sub_dir in full_path):
-#                     test_cases = py_common.find_files_in_dir(full_path, regex)
-#                     found = True
-#                     break
-#
-#             else:
-#                 if (cwe_ in full_path):
-#                     test_cases = py_common.find_files_in_dir(full_path, regex)
-#                     found = True
-#                     break
-#
-#         if found:
-#             break
-#
-#     # count juliet test cases for this project
-#     for test_case in test_cases:
-#         count += 1
-#
-#     path_and_count.extend([count, full_path])
-#
-#     return path_and_count
+def count_juliet_test_cases(fpr_name):
+    count = 0
+    full_path = ""
+    found = False
+    test_cases = []
+    path_and_count = []
+    juliet_tc_path = ""
+    t_f = ""
+
+    # get juliet regex
+    regex = py_common.get_primary_testcase_filename_regex()
+
+    if "\\T\\" in fpr_name:
+        t_f = "T"
+    else:
+        t_f = "F"
+
+    juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
+    juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
+
+    dir_info = fpr_name.rsplit(".", 2)[1]
+    cwe_ = dir_info.split("_")[0] + "_"
+
+    if "_" in dir_info:
+        sub_dir = dir_info.split("_")[1]
+    else:
+        sub_dir = "none"
+
+    for root, dirs, files in os.walk(juliet_tc_path):
+
+        for dir in dirs:
+
+            full_path = root + "\\" + dir
+
+            if sub_dir != "none":
+                if (cwe_ in full_path) and (sub_dir in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+            else:
+                if (cwe_ in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+        if found:
+            break
+
+    # count juliet test cases for this project
+    for test_case in test_cases:
+        count += 1
+
+    path_and_count.extend([count, full_path])
+
+    return path_and_count
 
 
-# def count_juliet_test_cases_OROGINAL(fpr_name):
-#     count = 0
-#     full_path = ""
-#     found = False
-#     test_cases = []
-#     path_and_count = []
-#     juliet_tc_path = ""
-#     t_f = ""
-#
-#     # get juliet regex
-#     regex = py_common.get_primary_testcase_filename_regex()
-#
-#     if "\\T\\" in fpr_name:
-#         t_f = "T"
-#     else:
-#         t_f = "F"
-#
-#     juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
-#     juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
-#
-#     dir_info = fpr_name.rsplit(".", 2)[1]
-#     cwe_ = dir_info.split("_")[0] + "_"
-#
-#     if "_" in dir_info:
-#         sub_dir = dir_info.split("_")[1]
-#     else:
-#         sub_dir = "none"
-#
-#     for root, dirs, files in os.walk(juliet_tc_path):
-#
-#         for dir in dirs:
-#
-#             full_path = root + "\\" + dir
-#
-#             if sub_dir != "none":
-#                 if (cwe_ in full_path) and (sub_dir in full_path):
-#                     test_cases = py_common.find_files_in_dir(full_path, regex)
-#                     found = True
-#                     break
-#
-#             else:
-#                 if (cwe_ in full_path):
-#                     test_cases = py_common.find_files_in_dir(full_path, regex)
-#                     found = True
-#                     break
-#
-#         if found:
-#             break
-#
-#     # count juliet test cases for this project
-#     for test_case in test_cases:
-#         count += 1
-#
-#     path_and_count.extend([count, full_path])
-#
-#     return path_and_count
+def count_juliet_test_cases_OROGINAL(fpr_name):
+    count = 0
+    full_path = ""
+    found = False
+    test_cases = []
+    path_and_count = []
+    juliet_tc_path = ""
+    t_f = ""
+
+    # get juliet regex
+    regex = py_common.get_primary_testcase_filename_regex()
+
+    if "\\T\\" in fpr_name:
+        t_f = "T"
+    else:
+        t_f = "F"
+
+    juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
+    juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
+
+    dir_info = fpr_name.rsplit(".", 2)[1]
+    cwe_ = dir_info.split("_")[0] + "_"
+
+    if "_" in dir_info:
+        sub_dir = dir_info.split("_")[1]
+    else:
+        sub_dir = "none"
+
+    for root, dirs, files in os.walk(juliet_tc_path):
+
+        for dir in dirs:
+
+            full_path = root + "\\" + dir
+
+            if sub_dir != "none":
+                if (cwe_ in full_path) and (sub_dir in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+            else:
+                if (cwe_ in full_path):
+                    test_cases = py_common.find_files_in_dir(full_path, regex)
+                    found = True
+                    break
+
+        if found:
+            break
+
+    # count juliet test cases for this project
+    for test_case in test_cases:
+        count += 1
+
+    path_and_count.extend([count, full_path])
+
+    return path_and_count
 
 
-# def extract_fvdl_from_fpr(fpr_file, output_dir):
-#     # fortify .fpr files need unzipped to get the xml
-#     myzip = zipfile.ZipFile(fpr_file, mode='r')
-#     myzip.extract(FVDL_NAME, path=output_dir)
-#     myzip.close()
+def extract_fvdl_from_fpr(fpr_file, output_dir):
+    # fortify .fpr files need unzipped to get the xml
+    myzip = zipfile.ZipFile(fpr_file, mode='r')
+    myzip.extract(FVDL_NAME, path=output_dir)
+    myzip.close()
 
 
 def create_or_clean_xml_dir(xml_dir):
@@ -248,169 +248,169 @@ def create_or_clean_xml_dir(xml_dir):
             os.remove(xml_dir + "//" + fileName)
 
 
-# def paint_sheet(used_wid_list):
-#     for wid in used_wid_list:
-#         ws = wb['Weakness IDs']
-#         set_appearance(ws, 3, 3, 'fg_fill', 'F4B084')
+def paint_sheet(used_wid_list):
+    for wid in used_wid_list:
+        ws = wb['Weakness IDs']
+        set_appearance(ws, 3, 3, 'fg_fill', 'F4B084')
 
 
-# def get_data(src_path, dest_path):
-#     # container to hold one slot of data per scan
-#     data_list = []
-#     juliet_f_hits_total = []
-#
-#     used_weakness_ids_total = []
-#     used_unique_ids = []
-#
-#     # kdm_counts_and_path = []
-#     # juliet_counts_and_path = []
-#
-#     create_or_clean_xml_dir(dest_path)
-#
-#     # fortify files are not in standard xml format
-#     if TOOL_NAME == 'fortify':
-#         scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
-#     else:
-#         scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
-#
-#     for scan_data_file in scan_data_files:
-#
-#         # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
-#         if '\\T\\' in scan_data_file:
-#             t_f = 'TRUE'
-#         else:
-#             t_f = 'FALSE'
-#
-#         proj_name = os.path.basename(scan_data_file)
-#         proj_sub_name = proj_name.rsplit('.', 2)[1]
-#
-#         if 'juliet' in scan_data_file:
-#             test_case_type = 'juliet'
-#             xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
-#         elif 'kdm' in scan_data_file:
-#             test_case_type = 'kdm'
-#             xml_name = proj_sub_name + '_' + test_case_type + '.xml'
-#         else:
-#             print('NO TEST CASE TYPE FOUND!')
-#
-#         if TOOL_NAME == 'fortify':
-#             extract_fvdl_from_fpr(scan_data_file, dest_path)
-#
-#         # format xml name
-#         tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-#         new_path_to_xml = os.path.join(dest_path, xml_name)
-#         # create fresh xml name
-#         os.rename(tool_path_to_xml, new_path_to_xml)
-#
-#         # get cwe number from project name
-#         match = re.search('CWE\d+', proj_name)
-#         cwe_num = match.group(0)[3:].lstrip('0')
-#         cwe_padded = 'CWE' + cwe_num.zfill(3)
-#
-#         # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
-#         score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num,
-#                                                                                      test_case_type, t_f)
-#         used_weakness_ids_total += used_weakness_ids
-#         juliet_f_hits_total += juliet_f_hits
-#         used_unique_ids = remove_dups(used_weakness_ids_total)
-#
-#         # juliet
-#         if test_case_type == 'juliet':
-#             juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
-#
-#             # for juliet false test cases, use opps vs test case count
-#             if t_f == 'TRUE':
-#                 juliet_count = juliet_counts_and_path[0]
-#             elif t_f == 'FALSE':
-#                 # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
-#                 # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-#                 opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
-#                 juliet_count = sum(opps_per_test_case.values())
-#             else:
-#                 print('TRUE/FALSE NOT FOUND')
-#
-#             juliet_path = juliet_counts_and_path[1]
-#             if juliet_count != 0:
-#                 percent_hits = (score / juliet_count) * 100
-#             else:
-#                 percent_hits = 0
-#             data_list.append(
-#                 [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
-#                  proj_name])
-#
-#         # kdm
-#         if test_case_type == 'kdm':
-#             kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
-#             kdm_count = kdm_counts_and_path[0]
-#             kdm_path = kdm_counts_and_path[1]
-#             if kdm_count != 0:
-#                 percent_hits = (score / kdm_count) * 100
-#             else:
-#                 percent_hits = 0
-#             data_list.append(
-#                 [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
-#                  proj_name])
-#
-#     paint_sheet(used_unique_ids)
-#
-#     write_opp_counts_to_sheet(juliet_f_hits_total)
-#
-#     return data_list
+def get_data(src_path, dest_path):
+    # container to hold one slot of data per scan
+    data_list = []
+    juliet_f_hits_total = []
+
+    used_weakness_ids_total = []
+    used_unique_ids = []
+
+    # kdm_counts_and_path = []
+    # juliet_counts_and_path = []
+
+    create_or_clean_xml_dir(dest_path)
+
+    # fortify files are not in standard xml format
+    if TOOL_NAME == 'fortify':
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
+    else:
+        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
+
+    for scan_data_file in scan_data_files:
+
+        # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
+        if '\\T\\' in scan_data_file:
+            t_f = 'TRUE'
+        else:
+            t_f = 'FALSE'
+
+        proj_name = os.path.basename(scan_data_file)
+        proj_sub_name = proj_name.rsplit('.', 2)[1]
+
+        if 'juliet' in scan_data_file:
+            test_case_type = 'juliet'
+            xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
+        elif 'kdm' in scan_data_file:
+            test_case_type = 'kdm'
+            xml_name = proj_sub_name + '_' + test_case_type + '.xml'
+        else:
+            print('NO TEST CASE TYPE FOUND!')
+
+        if TOOL_NAME == 'fortify':
+            extract_fvdl_from_fpr(scan_data_file, dest_path)
+
+        # format xml name
+        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
+        new_path_to_xml = os.path.join(dest_path, xml_name)
+        # create fresh xml name
+        os.rename(tool_path_to_xml, new_path_to_xml)
+
+        # get cwe number from project name
+        match = re.search('CWE\d+', proj_name)
+        cwe_num = match.group(0)[3:].lstrip('0')
+        cwe_padded = 'CWE' + cwe_num.zfill(3)
+
+        # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
+        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num,
+                                                                                     test_case_type, t_f)
+        used_weakness_ids_total += used_weakness_ids
+        juliet_f_hits_total += juliet_f_hits
+        used_unique_ids = remove_dups(used_weakness_ids_total)
+
+        # juliet
+        if test_case_type == 'juliet':
+            juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
+
+            # for juliet false test cases, use opps vs test case count
+            if t_f == 'TRUE':
+                juliet_count = juliet_counts_and_path[0]
+            elif t_f == 'FALSE':
+                # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
+                # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+                opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
+                juliet_count = sum(opps_per_test_case.values())
+            else:
+                print('TRUE/FALSE NOT FOUND')
+
+            juliet_path = juliet_counts_and_path[1]
+            if juliet_count != 0:
+                percent_hits = (score / juliet_count) * 100
+            else:
+                percent_hits = 0
+            data_list.append(
+                [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
+                 proj_name])
+
+        # kdm
+        if test_case_type == 'kdm':
+            kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
+            kdm_count = kdm_counts_and_path[0]
+            kdm_path = kdm_counts_and_path[1]
+            if kdm_count != 0:
+                percent_hits = (score / kdm_count) * 100
+            else:
+                percent_hits = 0
+            data_list.append(
+                [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
+                 proj_name])
+
+    paint_sheet(used_unique_ids)
+
+    write_opp_counts_to_sheet(juliet_f_hits_total)
+
+    return data_list
 
 
-# def parse_xml_ORIGINAL(suite_dat):
-#     ns = {}
-#     weakness_id_schemas = []
-#     tag_ids = getattr(suite_dat, 'tag_info')
-#     finding_type_schema = ''
-#     file_line_schema = ''
-#
-#     for xml_project in suite_data.xml_projects:
-#         # read namespace from the first xml since it will be the same for all other xmls
-#         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
-#         tree = ET.parse(xml_path)
-#         root = tree.getroot()
-#         ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-#
-#         # ns = getattr(suite_data, 'name_space')
-#
-#         # get xml schemas from vendor input file
-#         for idx, tag in enumerate(tag_ids):
-#             schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
-#             if idx == 1:
-#                 finding_type_schema = schema
-#             if idx == 2:
-#                 file_name_schema = schema
-#             if idx == 3:
-#                 file_line_schema = schema
-#             if idx > 3:
-#                 weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
-#
-#         for vuln in root.findall('./' + finding_type_schema, ns):
-#             # weakness id parts #todo: make these weakness id names generic
-#             kingdom = vuln.find(weakness_id_schemas[0], ns)
-#             type = vuln.find(weakness_id_schemas[1], ns)
-#             subtype = vuln.find(weakness_id_schemas[2], ns)
-#
-#             attribute = True
-#             if attribute:
-#                 # file name
-#                 schema = file_name_schema.rsplit('/', 1)[0]
-#                 attrib = file_name_schema.rsplit(':', 1)[1]
-#                 filepath = vuln.find(schema, ns).attrib[attrib]
-#                 filename = os.path.basename(filepath)
-#
-#                 juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(
-#                     filepath))  # todo: look into doing this vs current method
-#
-#                 # file line
-#                 attrib = file_line_schema.rsplit('/', 1)[1][4:]
-#                 fileline = vuln.find(schema, ns).attrib[attrib]
-#
-#             print(kingdom)
-#
-#             # set the suite object name space attribute
-#             # setattr(suite_dat, 'name_space', ns)
+def parse_xml_ORIGINAL(suite_dat):
+    ns = {}
+    weakness_id_schemas = []
+    tag_ids = getattr(suite_dat, 'tag_info')
+    finding_type_schema = ''
+    file_line_schema = ''
+
+    for xml_project in suite_data.xml_projects:
+        # read namespace from the first xml since it will be the same for all other xmls
+        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+
+        # ns = getattr(suite_data, 'name_space')
+
+        # get xml schemas from vendor input file
+        for idx, tag in enumerate(tag_ids):
+            schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
+            if idx == 1:
+                finding_type_schema = schema
+            if idx == 2:
+                file_name_schema = schema
+            if idx == 3:
+                file_line_schema = schema
+            if idx > 3:
+                weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
+
+        for vuln in root.findall('./' + finding_type_schema, ns):
+            # weakness id parts #todo: make these weakness id names generic
+            kingdom = vuln.find(weakness_id_schemas[0], ns)
+            type = vuln.find(weakness_id_schemas[1], ns)
+            subtype = vuln.find(weakness_id_schemas[2], ns)
+
+            attribute = True
+            if attribute:
+                # file name
+                schema = file_name_schema.rsplit('/', 1)[0]
+                attrib = file_name_schema.rsplit(':', 1)[1]
+                filepath = vuln.find(schema, ns).attrib[attrib]
+                filename = os.path.basename(filepath)
+
+                juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(
+                    filepath))  # todo: look into doing this vs current method
+
+                # file line
+                attrib = file_line_schema.rsplit('/', 1)[1][4:]
+                fileline = vuln.find(schema, ns).attrib[attrib]
+
+            print(kingdom)
+
+            # set the suite object name space attribute
+            # setattr(suite_dat, 'name_space', ns)
 
 
 def parse_xml(suite_dat):
@@ -430,6 +430,36 @@ def parse_xml(suite_dat):
 
     tag_ids = getattr(suite_dat, 'tag_info')
 
+    # get xml schemas from vendor input file
+    for idx, content in enumerate(tag_ids):
+
+        schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
+
+        # finding type
+        if content[0].lower() == 'finding_type':
+            if content[2].lower() == 'tag':
+                finding_type_schema = schema
+            continue
+        # file name
+        if content[0].lower() == 'file_name':
+            if content[2].lower() == 'tag':
+                file_name_schema = schema
+            elif content[2].lower() == 'attribute':
+                file_name_schema = schema.rsplit('/', 1)[0]
+                file_name_attrib = schema.rsplit(':', 1)[1]
+            continue
+        # line number
+        if content[0].lower() == 'line_number':
+            if content[2].lower() == 'tag':
+                line_number_schema = schema
+            elif content[2].lower() == 'attribute':
+                line_number_schema = schema.rsplit('/', 1)[0]
+                line_number_attrib = schema.rsplit(':', 1)[1]
+            continue
+        # weakness ids
+        if 'weakness' in content[0].lower():
+            weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
+
     for xml_project in suite_data.xml_projects:
         # read namespace from the first xml since it will be the same for all other xmls
         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
@@ -441,115 +471,87 @@ def parse_xml(suite_dat):
 
         print('XML', xml_path)
 
-        # get xml schemas from vendor input file
-        for idx, content in enumerate(tag_ids):
 
-            schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
+        for vuln in root.findall('./' + finding_type_schema, ns):
+            #todo: add condition for tag vs attribute; need flags in switch statement above
+            del weakness_id_that_hit[:]
+            del found_wids[:]
 
-            # finding type
-            if content[0].lower() == 'finding_type':
-                if content[2].lower() == 'tag':
-                    finding_type_schema = schema
-                continue
-            # file name
-            if content[0].lower() == 'file_name':
-                if content[2].lower() == 'tag':
-                    file_name_schema = schema
-                elif content[2].lower() == 'attribute':
-                    file_name_schema = schema.rsplit('/', 1)[0]
-                    file_name_attrib = schema.rsplit(':', 1)[1]
-                continue
-            # line number
-            if content[0].lower() == 'line_number':
-                if content[2].lower() == 'tag':
-                    line_number_schema = schema
-                elif content[2].lower() == 'attribute':
-                    line_number_schema = schema.rsplit('/', 1)[0]
-                    line_number_attrib = schema.rsplit(':', 1)[1]
-                continue
-            # weakness ids
-            if 'weakness' in content[0].lower():
-                weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
+            # get path and line number of each hit
+            file_path = vuln.find(file_name_schema, ns).attrib[file_name_attrib]
+            line_number = vuln.find(line_number_schema, ns).attrib[line_number_attrib]
+            filename = os.path.basename(file_path)
 
-        # for vuln in root.findall('./' + finding_type_schema, ns):
-        #     #todo: add condition for tag vs attribute; need flags in switch statement above
-        #     del weakness_id_that_hit[:]
-        #     del found_wids[:]
-        #
-        #     # get path and line number of each hit
-        #     file_path = vuln.find(file_name_schema, ns).attrib[file_name_attrib]
-        #     line_number = vuln.find(line_number_schema, ns).attrib[line_number_attrib]
-        #     filename = os.path.basename(file_path)
-        #
-        #     # get weakness id(s) of each hit
-        #     for idx, weakness_id in enumerate(weakness_id_schemas):
-        #         wid = vuln.find(weakness_id_schemas[idx], ns)
-        #         if wid is not None:
-        #             weakness_id_that_hit.append(wid.text)
-        #             #wid_string += wid.text
-        #
-        #     # get the acceptable wids for this xml
-        #     acceptable_wids = getattr(xml_project, 'acceptable_weakness_ids')
-        #
-        #     # for hit_id in weakness_id_that_hit:
-        #     #     for good_id in acceptable_wids:
-        #     #         if hit_id in good_id:
-        #     #             print('HIT_ID', hit_id, 'FOUND_IN_GOOD_ID', good_id)
-        #
-        #     for good_id in acceptable_wids:
-        #
-        #         found = True
-        #
-        #         if good_id != 'None':
-        #             for hit_id in weakness_id_that_hit:
-        #                 if hit_id is not None:
-        #                     if hit_id in good_id:
-        #                         print('FOUND-----------------', good_id)
-        #                     else:
-        #                         #print('HIT ID:\t', hit_id, 'NOT_FOUND************', good_id)
-        #                         found = False
-        #                         break
-        #             if found:
-        #                 if good_id not in found_wids:
-        #                     found_wids.append(good_id)
-        #
-        #     setattr(xml_project, 'found_weakness_ids', found_wids)
-        #
-        #     #acceptable_groups.append(str(acceptable_wids).split(':'))
-        #
-        #     # see if the weakness id that hit is an acceptable id and will be counted
-        #     #if any(weakness_id_that_hit[0] in s for s in acceptable_wids):
-        #
-        #     # for idweakness_id_that_hit
-        #     #
-        #     #     print('FOUND WID:', weakness_id_that_hit[0], 'IN ACCEPTABLE IDS:', acceptable_wids)
-        #
-        #
-        #
-        #     # set the suite object name space attribute #todo: keep this?
-        #     setattr(suite_dat, 'name_space', ns)
+            # get weakness id(s) of each hit
+            for idx, weakness_id in enumerate(weakness_id_schemas):
+                wid = vuln.find(weakness_id_schemas[idx], ns)
+                if wid is not None:
+                    weakness_id_that_hit.append(wid.text)
+                    #wid_string += wid.text
+
+            # get the acceptable wids for this xml
+            acceptable_wids = getattr(xml_project, 'acceptable_weakness_ids')
+
+            # for hit_id in weakness_id_that_hit:
+            #     for good_id in acceptable_wids:
+            #         if hit_id in good_id:
+            #             print('HIT_ID', hit_id, 'FOUND_IN_GOOD_ID', good_id)
+
+            for good_id in acceptable_wids:
+
+                found = True
+
+                if good_id != 'None':
+                    for hit_id in weakness_id_that_hit:
+                        if hit_id is not None:
+                            if hit_id in good_id:
+                                found = True #todo: don't really need this but for now keep
+                                #print('FOUND-----------------', good_id)
+                            else:
+                                #print('HIT ID:\t', hit_id, 'NOT_FOUND************', good_id)
+                                found = False
+                                break
+                    if found:
+                        if good_id not in found_wids:
+                            found_wids.append(good_id)
+
+            setattr(xml_project, 'found_weakness_ids', found_wids)
+
+            #acceptable_groups.append(str(acceptable_wids).split(':'))
+
+            # see if the weakness id that hit is an acceptable id and will be counted
+            #if any(weakness_id_that_hit[0] in s for s in acceptable_wids):
+
+            # for idweakness_id_that_hit
+            #
+            #     print('FOUND WID:', weakness_id_that_hit[0], 'IN ACCEPTABLE IDS:', acceptable_wids)
 
 
-# def import_xml_tags_ORIGINAL(suite_dat):
-#     row = 0
-#
-#     parse_xml(suite_dat)
-#     ns = getattr(suite_data, 'name_space')
-#
-#     ws = wb.get_sheet_by_name('XML Tags')
-#     row_count = ws.max_row
-#     col_count = ws.max_column
-#
-#     tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-#
-#     for row_idx in ws.iter_rows():
-#         col = 0
-#         for cell in row_idx:
-#             tag_ids[row][col] = str(cell.value)
-#             col += 1
-#         row += 1
-#
-#     setattr(suite_dat, 'tag_info', tag_ids)
+
+            # set the suite object name space attribute #todo: keep this?
+            setattr(suite_dat, 'name_space', ns)
+
+
+def import_xml_tags_ORIGINAL(suite_dat):
+    row = 0
+
+    parse_xml(suite_dat)
+    ns = getattr(suite_data, 'name_space')
+
+    ws = wb.get_sheet_by_name('XML Tags')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            tag_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+
+    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 def import_xml_tags(suite_dat):

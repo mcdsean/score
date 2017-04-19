@@ -167,7 +167,7 @@ class Suite(object):
                     tc_path = root.replace(os.getcwd(), '')[1:]
                     setattr(self.xml_projects[i], 'tc_path', tc_path)
                     project_id = i
-                    #self.count_test_cases(project_id, tc_path)
+                    self.count_test_cases(project_id, tc_path)
                     # root_list.remove(root) #todo: this was intended to speed up searches but left some fields blank in the spreadsheet (delete or troubleshoot)
                     break
 
@@ -184,12 +184,12 @@ class Suite(object):
                         # reduce filename to test case name by removing variant and file extension
                         file = re.sub('[a-z]?\.\w+$', '', file)
                         test_case_files.append(file)
-                        print('JULIET TEST CASE FILE', file)
+                        #print('JULIET TEST CASE FILE', file)
                     elif tc_type == 'kdm':
                         if not file.endswith(".h") and not file.endswith("_a.c") and not file.endswith(
                                 ".obj") and file.startswith("SFP"):
                             test_case_files.append(file)
-                            print('KDM TEST CASE FILE', file)
+                            #print('KDM TEST CASE FILE', file)
                     else:
                         print('Not a KDM or Juliet Test Case File.')
 
