@@ -19,7 +19,7 @@ class Xml(object):
         self.percent_hits = ''
         self.tc_path = ''
         self.acceptable_weakness_ids = []
-        self.found_weakness_ids = []
+        self.used_wids = []
 
         print('PROJECT FILE---', self.scan_data_file)
 
