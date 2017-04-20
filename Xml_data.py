@@ -18,11 +18,16 @@ class Xml(object):
         self.num_of_hits = ''
         self.percent_hits = ''
         self.tc_path = ''
+
         self.acceptable_weakness_ids = []
         self.used_wids = []
 
+        self.files_that_hit = []
+
         print('PROJECT FILE---', self.scan_data_file)
 
+    def test(self, u_wids):
+        self.used_wids = u_wids
 
 class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):
@@ -30,7 +35,7 @@ class Suite(object):
         self.dest_path = dest_path
         self.tool_name = tool_name
 
-        # raw file produced by scanner
+        # raw files produced by scanner
         self.scan_data_files = []
         # list of xml project objects
         self.xml_projects = []
@@ -39,10 +44,12 @@ class Suite(object):
 
         # runtime attributes
         self.name_space = ''
+
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
+        self.used_weakness_ids = []
 
-        # create or clean xml dir
+        # auto-run methods on creation
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
@@ -75,7 +82,6 @@ class Suite(object):
             self.scan_data_files = py_common.find_files_in_dir(self.source_path, '.*?\.fpr$')
         else:
             self.scan_data_files = py_common.find_files_in_dir(self.source_path, '.*?\.xml$')
-
 
     def get_xml_info(self, scan_data_files):
 
@@ -217,3 +223,4 @@ class Suite(object):
         self.xml_projects.sort(key=operator.attrgetter('true_false'), reverse=False)
         self.xml_projects.sort(key=operator.attrgetter('tc_type'))
         self.xml_projects.sort(key=operator.attrgetter('cwe_id_padded'))
+

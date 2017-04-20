@@ -358,76 +358,20 @@ def get_data(src_path, dest_path):
     return data_list
 
 
-def parse_xml_ORIGINAL(suite_dat):
-    ns = {}
-    weakness_id_schemas = []
-    tag_ids = getattr(suite_dat, 'tag_info')
-    finding_type_schema = ''
-    file_line_schema = ''
-
-    for xml_project in suite_data.xml_projects:
-        # read namespace from the first xml since it will be the same for all other xmls
-        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-        # ns = getattr(suite_data, 'name_space')
-
-        # get xml schemas from vendor input file
-        for idx, tag in enumerate(tag_ids):
-            schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
-            if idx == 1:
-                finding_type_schema = schema
-            if idx == 2:
-                file_name_schema = schema
-            if idx == 3:
-                file_line_schema = schema
-            if idx > 3:
-                weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
-
-        for vuln in root.findall('./' + finding_type_schema, ns):
-            # weakness id parts #todo: make these weakness id names generic
-            kingdom = vuln.find(weakness_id_schemas[0], ns)
-            type = vuln.find(weakness_id_schemas[1], ns)
-            subtype = vuln.find(weakness_id_schemas[2], ns)
-
-            attribute = True
-            if attribute:
-                # file name
-                schema = file_name_schema.rsplit('/', 1)[0]
-                attrib = file_name_schema.rsplit(':', 1)[1]
-                filepath = vuln.find(schema, ns).attrib[attrib]
-                filename = os.path.basename(filepath)
-
-                juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(
-                    filepath))  # todo: look into doing this vs current method
-
-                # file line
-                attrib = file_line_schema.rsplit('/', 1)[1][4:]
-                fileline = vuln.find(schema, ns).attrib[attrib]
-
-            print(kingdom)
-
-            # set the suite object name space attribute
-            # setattr(suite_dat, 'name_space', ns)
-
-
 def parse_xml(suite_dat):
 
     ns = {}
     wid_pieces_that_hit = []
     weakness_id_schemas = []
-    good_wids = []
     finding_type_schema = ''
     file_name_schema = ''
     file_name_attrib = ''
     line_number_schema = ''
     line_number_attrib = ''
-    wid_string = ''
-    acceptable_groups = []
-    used_wids = []
-    test_case_files = []
+    #used_wids = []
+    #test_case_files = []
+
+    files_that_hit = []
 
     tag_ids = getattr(suite_dat, 'tag_info')
 
@@ -464,8 +408,9 @@ def parse_xml(suite_dat):
     index = 0
     for xml_project in suite_data.xml_projects:
 
-        del test_case_files[:]
-        del used_wids[:]  # todo: pickup here , this is not in the correct spot
+        #del test_case_files[:]
+        test_case_files = []
+        used_wids = []
 
         print('Index:---------', str(index).zfill(3))
 
@@ -535,176 +480,35 @@ def parse_xml(suite_dat):
                     continue
 
         score = len(set(test_case_files))
+
         print('SCORE:', score)
         setattr(xml_project, 'num_of_hits', score)
+        setattr(xml_project, 'files_that_hit', test_case_files)
         setattr(xml_project, 'used_wids', used_wids)
-        print(getattr(xml_project, 'used_wids'))
 
         index +=1
 
 
-def parse_xml_1(suite_dat):
-    ns = {}
-    wid_pieces_that_hit = []
-    weakness_id_schemas = []
-    good_wids = []
-    finding_type_schema = ''
-    file_name_schema = ''
-    file_name_attrib = ''
-    line_number_schema = ''
-    line_number_attrib = ''
-    wid_string = ''
-    acceptable_groups = []
-    used_wids = []
-    test_case_files = []
-
-    tag_ids = getattr(suite_dat, 'tag_info')
-
-    # get xml schemas from vendor input file
-    for idx, content in enumerate(tag_ids):
-
-        schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
-
-        # finding type
-        if content[0].lower() == 'finding_type':
-            if content[2].lower() == 'tag':
-                finding_type_schema = schema
-            continue
-        # file name
-        if content[0].lower() == 'file_name':
-            if content[2].lower() == 'tag':
-                file_name_schema = schema
-            elif content[2].lower() == 'attribute':
-                file_name_schema = schema.rsplit('/', 1)[0]
-                file_name_attrib = schema.rsplit(':', 1)[1]
-            continue
-        # line number
-        if content[0].lower() == 'line_number':
-            if content[2].lower() == 'tag':
-                line_number_schema = schema
-            elif content[2].lower() == 'attribute':
-                line_number_schema = schema.rsplit('/', 1)[0]
-                line_number_attrib = schema.rsplit(':', 1)[1]
-            continue
-        # weakness ids
-        if 'weakness' in content[0].lower():
-            weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
-
-    index = 0
-    for xml_project in suite_data.xml_projects:
-
-        del test_case_files[:]
-        del used_wids[:]  # todo: pickup here , this is not in the correct spot
-
-        print('Index:---------', str(index).zfill(3))
-
-        # read namespace from the first xml since it will be the same for all other xmls
-        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-        # setattr(suite_dat, 'name_space', ns) #todo: we only need this one time
-
-        print('XML', xml_path)
-
-        # get the acceptable wids for this xml
-        good_wids = getattr(xml_project, 'acceptable_weakness_ids')
-        tool_name = getattr(suite_data, 'tool_name')
-
-        # 1. parse thru each row in this xml looking for good wids, and get the filename & line #
-        for vuln in root.findall('./' + finding_type_schema, ns):
-            # todo: add condition for tag vs attribute; need flags in switch statement above
-            del wid_pieces_that_hit[:]
-
-            # 2. get path(filename) and line number for this row in this xml
-            file_path = vuln.find(file_name_schema, ns).attrib[file_name_attrib]
-            line_number = vuln.find(line_number_schema, ns).attrib[line_number_attrib]
-            filename = os.path.basename(file_path)
-
-            # 3. get all pieces of the wid for this row in the xml
-            for idx, weakness_id in enumerate(weakness_id_schemas):
-                wid_piece = vuln.find(weakness_id_schemas[idx], ns)
-                if wid_piece is not None:
-                    wid_pieces_that_hit.append(wid_piece)
-
-            # 4. look at each non-empty cell in the spreadsheet for acceptable wids
-            for good_wid in good_wids:
-
-                found = True
-
-                if tool_name == 'fortify':
-                    good_wid_pieces = good_wid.split(WID_SEPERATOR_FORTIFY)
-                else:
-                    good_wid_pieces = good_wid
-
-                # 5. if the current cell in spreadsheet does not contain a cwe # or is blank, move on
-                if good_wid != 'None' and not good_wid.isdigit():
-
-                    # 6. see if ALL of the pieces for this row match this cell's good wid
-                    for hit_piece in wid_pieces_that_hit:
-
-                        # 7. if ANY of the pieces are NOT in this good wid, move onto the next good wid
-
-
-                        temp = []
-
-                        for myid in wid_pieces_that_hit:
-                            temp.append(myid.text)
-
-                        if set(temp) != set(good_wid_pieces):
-                            found = False
-                            break
-
-                        '''
-                        print('HIT_PIECE', hit_piece.text)
-                        #if hit_piece.text not in good_wid:
-                        if hit_piece.text not in good_wid_pieces:
-                            print('HIT ID:\t', hit_piece.text, 'NOT_FOUND IN************', good_wid)
-                            found = False
-                            break
-                        '''
-
-                    if found:
-                        # add the used wid to the list if it is not already there
-                        if good_wid not in used_wids:
-                            used_wids.append(good_wid)
-                        # todo: consider using 'not in' like above, but may want to write all to sheet instead?
-                        test_case_files.append(filename)
-
-                # empty good wid cell so move on
-                else:
-                    continue
-
-        score = len(set(test_case_files))
-        print('SCORE:', score)
-        setattr(xml_project, 'num_of_hits', score)
-        setattr(xml_project, 'used_wids', used_wids)
-        print(getattr(xml_project, 'used_wids'))
-
-        index += 1
-
-
-def import_xml_tags_ORIGINAL(suite_dat):
-    row = 0
-
-    parse_xml(suite_dat)
-    ns = getattr(suite_data, 'name_space')
-
-    ws = wb.get_sheet_by_name('XML Tags')
-    row_count = ws.max_row
-    col_count = ws.max_column
-
-    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-
-    for row_idx in ws.iter_rows():
-        col = 0
-        for cell in row_idx:
-            tag_ids[row][col] = str(cell.value)
-            col += 1
-        row += 1
-
-    setattr(suite_dat, 'tag_info', tag_ids)
+# def import_xml_tags_ORIGINAL(suite_dat):
+#     row = 0
+#
+#     parse_xml(suite_dat)
+#     ns = getattr(suite_data, 'name_space')
+#
+#     ws = wb.get_sheet_by_name('XML Tags')
+#     row_count = ws.max_row
+#     col_count = ws.max_column
+#
+#     tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+#
+#     for row_idx in ws.iter_rows():
+#         col = 0
+#         for cell in row_idx:
+#             tag_ids[row][col] = str(cell.value)
+#             col += 1
+#         row += 1
+#
+#     setattr(suite_dat, 'tag_info', tag_ids)
 
 
 def import_xml_tags(suite_dat):
@@ -1220,7 +1024,7 @@ def write_details(data_details):
             set_appearance(ws2, i + 2, j + 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
-
+    #todo: keep this stuff until colors are implemented
     '''
     for data in scan_data:
 
