@@ -29,6 +29,18 @@ def format_workbook():
     ws2.protect()	
     ws3.protect()	
     '''
+
+    # todo: can do range for all here
+    # set varying col widths for sheet 1
+    ws1.column_dimensions['A'].width = 8
+    ws1.column_dimensions['B'].width = 8
+    ws1.column_dimensions['C'].width = 8
+    ws1.column_dimensions['D'].width = 8
+    ws1.column_dimensions['E'].width = 8
+    ws1.column_dimensions['F'].width = 8
+    ws1.column_dimensions['G'].width = 8
+    ws1.sheet_view.zoomScale = 90
+
     # set varying col widths for sheet 2
     ws2.column_dimensions['A'].width = 8
     ws2.column_dimensions['B'].width = 6
@@ -37,8 +49,9 @@ def format_workbook():
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 5
     ws2.column_dimensions['G'].width = 45
-    ws2.column_dimensions['H'].width = 69
+    ws2.column_dimensions['H'].width = 62
     ws2.column_dimensions['I'].width = 105
+    ws2.sheet_view.zoomScale = 85
 
     # opp
     ws3.column_dimensions['A'].width = 93
@@ -358,20 +371,9 @@ def get_data(src_path, dest_path):
     return data_list
 
 
-def parse_xml(suite_dat):
-
-    ns = {}
-    wid_pieces_that_hit = []
+def get_schemas(suite_dat):
+    schemas = {}
     weakness_id_schemas = []
-    finding_type_schema = ''
-    file_name_schema = ''
-    file_name_attrib = ''
-    line_number_schema = ''
-    line_number_attrib = ''
-    #used_wids = []
-    #test_case_files = []
-
-    files_that_hit = []
 
     tag_ids = getattr(suite_dat, 'tag_info')
 
@@ -383,36 +385,41 @@ def parse_xml(suite_dat):
         # finding type
         if content[0].lower() == 'finding_type':
             if content[2].lower() == 'tag':
-                finding_type_schema = schema
+                schemas['finding_type_schema'] = schema
             continue
         # file name
         if content[0].lower() == 'file_name':
             if content[2].lower() == 'tag':
-                file_name_schema = schema
+                schemas['file_name_schema'] = schema
             elif content[2].lower() == 'attribute':
-                file_name_schema = schema.rsplit('/', 1)[0]
-                file_name_attrib = schema.rsplit(':', 1)[1]
+                schemas['file_name_schema'] = schema.rsplit('/', 1)[0]
+                schemas['file_name_attrib'] = schema.rsplit(':', 1)[1]
             continue
         # line number
         if content[0].lower() == 'line_number':
             if content[2].lower() == 'tag':
-                line_number_schema = schema
+                schemas['line_number_schema'] = schema
             elif content[2].lower() == 'attribute':
-                line_number_schema = schema.rsplit('/', 1)[0]
-                line_number_attrib = schema.rsplit(':', 1)[1]
+                schemas['line_number_schema'] = schema.rsplit('/', 1)[0]
+                schemas['line_number_attrib'] = schema.rsplit(':', 1)[1]
             continue
         # weakness ids
         if 'weakness' in content[0].lower():
             weakness_id_schemas.append('ns1:' + str(tag_ids[idx][1]).replace('/', '/ns1:'))
 
-    index = 0
+    return schemas, weakness_id_schemas
+
+
+def parse_xml(suite_dat):
+    ns = {}
+    wid_pieces_that_hit = []
+
+    schemas, weakness_id_schemas = get_schemas(suite_dat)
+
     for xml_project in suite_data.xml_projects:
 
-        #del test_case_files[:]
         test_case_files = []
         used_wids = []
-
-        print('Index:---------', str(index).zfill(3))
 
         # read namespace from the first xml since it will be the same for all other xmls
         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
@@ -420,7 +427,7 @@ def parse_xml(suite_dat):
         root = tree.getroot()
         ns["ns1"] = root.tag.split("}")[0].replace('{', '')
 
-        # setattr(suite_dat, 'name_space', ns) #todo: we only need this one time
+        setattr(suite_dat, 'name_space', ns)  # todo: we only need this one time
 
         print('XML', xml_path)
 
@@ -430,25 +437,23 @@ def parse_xml(suite_dat):
         tool_name = getattr(suite_data, 'tool_name')
 
         # 1. parse thru each row in this xml looking for good wids, and get the filename & line #
-        for vuln in root.findall('./' + finding_type_schema, ns):
+        # for vuln in root.findall('./' + finding_type_schema, ns):
+        for vuln in root.findall('./' + schemas['finding_type_schema'], ns):
             #todo: add condition for tag vs attribute; need flags in switch statement above
             del wid_pieces_that_hit[:]
 
             # 2. get path(filename) and line number for this row in this xml
-            file_path = vuln.find(file_name_schema, ns).attrib[file_name_attrib]
-            line_number = vuln.find(line_number_schema, ns).attrib[line_number_attrib]
+            file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
             filename = os.path.basename(file_path)
 
             # 3. get all pieces of the wid for this row in the xml
             for idx, weakness_id in enumerate(weakness_id_schemas):
                 wid_piece = vuln.find(weakness_id_schemas[idx], ns)
                 if wid_piece is not None:
-                    #wid_pieces_that_hit.append(wid_piece)
                     wid_pieces_that_hit.append(wid_piece.text)
 
             # 4. look at each non-empty cell in the spreadsheet for acceptable wids
             for good_wid in good_wids:
-
                 if tool_name == 'fortify':
                     good_wid_pieces = good_wid.split(WID_SEPERATOR_FORTIFY)
                 else:
@@ -486,29 +491,27 @@ def parse_xml(suite_dat):
         setattr(xml_project, 'files_that_hit', test_case_files)
         setattr(xml_project, 'used_wids', used_wids)
 
-        index +=1
 
+def import_xml_tags_ORIGINAL(suite_dat):
+    row = 0
 
-# def import_xml_tags_ORIGINAL(suite_dat):
-#     row = 0
-#
-#     parse_xml(suite_dat)
-#     ns = getattr(suite_data, 'name_space')
-#
-#     ws = wb.get_sheet_by_name('XML Tags')
-#     row_count = ws.max_row
-#     col_count = ws.max_column
-#
-#     tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-#
-#     for row_idx in ws.iter_rows():
-#         col = 0
-#         for cell in row_idx:
-#             tag_ids[row][col] = str(cell.value)
-#             col += 1
-#         row += 1
-#
-#     setattr(suite_dat, 'tag_info', tag_ids)
+    parse_xml(suite_dat)
+    ns = getattr(suite_data, 'name_space')
+
+    ws = wb.get_sheet_by_name('XML Tags')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    for row_idx in ws.iter_rows():
+        col = 0
+        for cell in row_idx:
+            tag_ids[row][col] = str(cell.value)
+            col += 1
+        row += 1
+
+    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 def import_xml_tags(suite_dat):
@@ -690,193 +693,193 @@ def auto_score(suite_dat):
     return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
 
 
-# def auto_score_ORIGINAL(xml_path, cwe_no, test_case_type, test_case_t_f):
-#     i = 0
-#     ns = {}
-#
-#     opps_per_test_case = {}
-#
-#     juliet_f_tc_type = False
-#     first_time_thru_project = True
-#     juliet_f_tc_hits = []
-#     juliet_f_tc_hits_deduped = []
-#
-#     test_case_files = []
-#     acceptable_groups = []
-#     weakness_id_schemas = []
-#     de_duped_used_wid_list = []
-#
-#     '''
-#     # get opp counts for juliet-false only
-#     if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-#         # get opp counts per test case
-#         first_time_thru_project = False
-#         # count hits per test cases (<= oc)
-#         juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-#         opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-#     '''
-#
-#     # read namespace from xml
-#     tree = ET.parse(xml_path)
-#     root = tree.getroot()
-#     ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-#
-#     tag_ids = import_xml_tags()
-#
-#     # get xml schema from vendor input file
-#     for idx, tag in enumerate(tag_ids):
-#         if idx == 1:
-#             finding_type_schema = tag_ids[idx][1]
-#         if idx == 2:
-#             file_name_schema = tag_ids[idx][1]
-#         if idx > 2:
-#             weakness_id_schemas.append(tag_ids[idx][1])
-#
-#     # add namespace(s) to schemas
-#     finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
-#     file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
-#
-#     for w_id in weakness_id_schemas:
-#         weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
-#         i += 1
-#
-#     # get acceptable weakness id groups
-#     acceptable_weaknesses = import_weakness_ids(cwe_no)
-#     for acceptable_weakness in acceptable_weaknesses:
-#         acceptable_groups.append(str(acceptable_weakness).split(':'))
-#
-#     # parse this xml
-#     for vuln in root.findall('./' + finding_type, ns):
-#         # weakness id parts
-#         kingdom = vuln.find(weakness_id_schemas[0], ns)
-#         type = vuln.find(weakness_id_schemas[1], ns)
-#         subtype = vuln.find(weakness_id_schemas[2], ns)
-#         fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-#             'line']  # todo: 'line' hardcoded for now and not all tools may have this
-#         filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
-#         filename = os.path.basename(filepath)
-#         juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-#
-#         '''
-#         # get opp counts for juliet-false only
-#         if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-#             # get opp counts per test case
-#             first_time_thru_project = False
-#             # count hits per test cases (<= oc)
-#             juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-#             opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-#         '''
-#
-#         for group in acceptable_groups:
-#             found = False
-#             # valid groups
-#             if len(group) == 1:
-#                 if kingdom.text in group[0]:
-#                     found = True
-#             elif len(group) == 2:
-#                 if (kingdom.text in group[0]) and (type.text in group[1]):
-#                     found = True
-#             elif (len(group) == 3) and ('Subtype' in str(subtype)):
-#                 if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
-#                     found = True
-#
-#             if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
-#                 # JULIET
-#                 if test_case_type == 'juliet':
-#                     if test_case_t_f == 'TRUE':
-#                         # reduce filename to test case name by removing variant and file extension
-#                         filename = re.sub('[a-z]?\.\w+$', '', filename)
-#                     else:  # false
-#                         # if command line argument '-n = <normalize>', process the same as true
-#                         if normalize_juliet_false_scoring:
-#                             # treat false the same as true
-#                             filename = re.sub('[a-z]?\.\w+$', '', filename)
-#                         else:
-#                             juliet_f_tc_type = True
-#                             # accumulate all hits and line numbers
-#                             juliet_f_tc_hits.append([filepath, fileline])
-#                 # KDM
-#                 elif test_case_type == 'kdm':
-#                     filename = re.sub('[_a]?\.\w+$', '', filename)
-#                 else:
-#                     print('NOT_Juliet_or_KDM_Test_Case')
-#                     continue
-#
-#                 test_case_files.append(filename)
-#
-#                 # todo: finish adding to vendor input sheet
-#                 # used_wid_list.append([cwe_no, group])
-#                 # de_duped_used_wid_list = remove_dups(used_wid_list)
-#
-#     '''
-#     # copy file names for all hits
-#     juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
-#     juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
-#
-#     # determine how many hits each file has
-#     for file in juliet_f_tc_hits_deduped:
-#         i, j = 0, 0
-#         # Count the number of hits each file received
-#         for file2 in juliet_f_tc_hits:
-#             if file2[0] == file:
-#                 oc_count = file2[1]
-#                 # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
-#                 print('oc_count', oc_count)
-#                 if oc_count > i:
-#                     i += 1  # used
-#                     j += 1
-#                 else:
-#                     j += 1  # actual
-#                     print("COUNT_EXCEEDED_OC")
-#
-#         print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
-#         op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
-#
-#     write_opp_counts(op_sheet_list)
-#    '''
-#
-#     # get the unique hits for each file variant
-#     if juliet_f_tc_type:
-#         juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
-#         score = len(juliet_f_tc_hits_deduped)
-#     # get the unique hits for each set of test case files
-#     else:
-#         score = len(set(test_case_files))
-#
-#     # return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
-#     return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
+def auto_score_ORIGINAL(xml_path, cwe_no, test_case_type, test_case_t_f):
+    i = 0
+    ns = {}
+
+    opps_per_test_case = {}
+
+    juliet_f_tc_type = False
+    first_time_thru_project = True
+    juliet_f_tc_hits = []
+    juliet_f_tc_hits_deduped = []
+
+    test_case_files = []
+    acceptable_groups = []
+    weakness_id_schemas = []
+    de_duped_used_wid_list = []
+
+    '''
+    # get opp counts for juliet-false only
+    if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
+        # get opp counts per test case
+        first_time_thru_project = False
+        # count hits per test cases (<= oc)
+        juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
+        opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+    '''
+
+    # read namespace from xml
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+
+    tag_ids = import_xml_tags()
+
+    # get xml schema from vendor input file
+    for idx, tag in enumerate(tag_ids):
+        if idx == 1:
+            finding_type_schema = tag_ids[idx][1]
+        if idx == 2:
+            file_name_schema = tag_ids[idx][1]
+        if idx > 2:
+            weakness_id_schemas.append(tag_ids[idx][1])
+
+    # add namespace(s) to schemas
+    finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
+    file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
+
+    for w_id in weakness_id_schemas:
+        weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
+        i += 1
+
+    # get acceptable weakness id groups
+    acceptable_weaknesses = import_weakness_ids(cwe_no)
+    for acceptable_weakness in acceptable_weaknesses:
+        acceptable_groups.append(str(acceptable_weakness).split(':'))
+
+    # parse this xml
+    for vuln in root.findall('./' + finding_type, ns):
+        # weakness id parts
+        kingdom = vuln.find(weakness_id_schemas[0], ns)
+        type = vuln.find(weakness_id_schemas[1], ns)
+        subtype = vuln.find(weakness_id_schemas[2], ns)
+        fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
+            'line']  # todo: 'line' hardcoded for now and not all tools may have this
+        filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
+        filename = os.path.basename(filepath)
+        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
+
+        '''
+        # get opp counts for juliet-false only
+        if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
+            # get opp counts per test case
+            first_time_thru_project = False
+            # count hits per test cases (<= oc)
+            juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
+            opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
+        '''
+
+        for group in acceptable_groups:
+            found = False
+            # valid groups
+            if len(group) == 1:
+                if kingdom.text in group[0]:
+                    found = True
+            elif len(group) == 2:
+                if (kingdom.text in group[0]) and (type.text in group[1]):
+                    found = True
+            elif (len(group) == 3) and ('Subtype' in str(subtype)):
+                if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
+                    found = True
+
+            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
+                # JULIET
+                if test_case_type == 'juliet':
+                    if test_case_t_f == 'TRUE':
+                        # reduce filename to test case name by removing variant and file extension
+                        filename = re.sub('[a-z]?\.\w+$', '', filename)
+                    else:  # false
+                        # if command line argument '-n = <normalize>', process the same as true
+                        if normalize_juliet_false_scoring:
+                            # treat false the same as true
+                            filename = re.sub('[a-z]?\.\w+$', '', filename)
+                        else:
+                            juliet_f_tc_type = True
+                            # accumulate all hits and line numbers
+                            juliet_f_tc_hits.append([filepath, fileline])
+                # KDM
+                elif test_case_type == 'kdm':
+                    filename = re.sub('[_a]?\.\w+$', '', filename)
+                else:
+                    print('NOT_Juliet_or_KDM_Test_Case')
+                    continue
+
+                test_case_files.append(filename)
+
+                # todo: finish adding to vendor input sheet
+                # used_wid_list.append([cwe_no, group])
+                # de_duped_used_wid_list = remove_dups(used_wid_list)
+
+    '''
+    # copy file names for all hits
+    juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
+    juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
+
+    # determine how many hits each file has
+    for file in juliet_f_tc_hits_deduped:
+        i, j = 0, 0
+        # Count the number of hits each file received
+        for file2 in juliet_f_tc_hits:
+            if file2[0] == file:
+                oc_count = file2[1]
+                # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
+                print('oc_count', oc_count)
+                if oc_count > i:
+                    i += 1  # used
+                    j += 1
+                else:
+                    j += 1  # actual
+                    print("COUNT_EXCEEDED_OC")
+
+        print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
+        op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
+
+    write_opp_counts(op_sheet_list)
+   '''
+
+    # get the unique hits for each file variant
+    if juliet_f_tc_type:
+        juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
+        score = len(juliet_f_tc_hits_deduped)
+    # get the unique hits for each set of test case files
+    else:
+        score = len(set(test_case_files))
+
+    # return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
+    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
 
 
-# def get_opp_counts_per_test_case(juliet_test_case_path):
-#     opp_counts = {}
-#
-#     # for root, dirs, files in os.walk(juliet_tc_path_f):
-#     for root, dirs, files in os.walk(juliet_test_case_path):
-#
-#         for file in files:
-#             opp_count = 0
-#             if file.endswith(".c"):
-#                 with open(os.path.join(root, file), 'r') as inF:
-#                     for line in inF:
-#                         if 'FIX' in line:
-#                             opp_count += 1
-#
-#                 # get test case name by removing variant and file extension
-#                 test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-#                 test_case_full_path = os.path.join(root, test_case_name)
-#
-#                 # if test case name not in the list, add it
-#                 if opp_counts.get(test_case_full_path, 'None') == 'None':
-#                     opp_counts.update({test_case_full_path: opp_count})
-#
-#                 # if test case name is in the list, add this new value to the existing value
-#                 else:
-#                     current_value = opp_counts[test_case_full_path]
-#                     updated_value = opp_count + current_value
-#                     opp_counts.update({test_case_full_path: updated_value})
-#
-#     # return opp counts by test case name
-#     return opp_counts  # todo: consider sorting these for speed?
+def get_opp_counts_per_test_case(juliet_test_case_path):
+    opp_counts = {}
+
+    # for root, dirs, files in os.walk(juliet_tc_path_f):
+    for root, dirs, files in os.walk(juliet_test_case_path):
+
+        for file in files:
+            opp_count = 0
+            if file.endswith(".c"):
+                with open(os.path.join(root, file), 'r') as inF:
+                    for line in inF:
+                        if 'FIX' in line:
+                            opp_count += 1
+
+                # get test case name by removing variant and file extension
+                test_case_name = re.sub("[a-z]?\.\w+$", "", file)
+                test_case_full_path = os.path.join(root, test_case_name)
+
+                # if test case name not in the list, add it
+                if opp_counts.get(test_case_full_path, 'None') == 'None':
+                    opp_counts.update({test_case_full_path: opp_count})
+
+                # if test case name is in the list, add this new value to the existing value
+                else:
+                    current_value = opp_counts[test_case_full_path]
+                    updated_value = opp_count + current_value
+                    opp_counts.update({test_case_full_path: updated_value})
+
+    # return opp counts by test case name
+    return opp_counts  # todo: consider sorting these for speed?
 
 
 def get_opp_counts_per_file(file_path):
@@ -1051,131 +1054,125 @@ def write_details(data_details):
     '''
 
 
-# def write_details_ORIGINAL(scan_data):
-#     #########################################################################################################
-#     detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
-#     #########################################################################################################
-#
-#     row = 1
-#
-#     # perform multi-column sorts
-#     scan_data.sort(key=sort)
-#
-#     # freeze first row and column
-#     ws2.freeze_panes = ws2['B2']
-#
-#     # write column headers
-#     for idx, title in enumerate(detail_sheet_titles):
-#         set_appearance(ws2, row, idx + 1, 'fg_fill', 'F4B084')
-#         ws2.cell(row=1, column=idx + 1).value = title
-#         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-#
-#     for data in scan_data:
-#
-#         row += 1
-#
-#         # write data to sheets
-#         for idx, data_id in enumerate(data):
-#             ws2.cell(row=row, column=idx + 1).value = data_id
-#
-#             set_appearance(ws2, row, idx + 1, 'fg_fill', 'FFFFFF')
-#             ws2.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-#
-#         # set appearance & style
-#         if data[3] > 0:  # if hits > 0
-#             if data[7] == "TRUE":  # if true
-#                 set_appearance(ws2, row, 4, 'font_color', '548235')
-#                 set_appearance(ws2, row, 5, 'font_color', '548235')
-#             if data[7] == "FALSE":  # if false
-#                 set_appearance(ws2, row, 4, 'font_color', 'C00000')
-#                 set_appearance(ws2, row, 5, 'font_color', 'C00000')
-#         else:  # no hits
-#             set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
-#             set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
+def write_details_ORIGINAL(scan_data):
+    #########################################################################################################
+    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
+    #########################################################################################################
+
+    row = 1
+
+    # perform multi-column sorts
+    scan_data.sort(key=sort)
+
+    # freeze first row and column
+    ws2.freeze_panes = ws2['B2']
+
+    # write column headers
+    for idx, title in enumerate(detail_sheet_titles):
+        set_appearance(ws2, row, idx + 1, 'fg_fill', 'F4B084')
+        ws2.cell(row=1, column=idx + 1).value = title
+        ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    for data in scan_data:
+
+        row += 1
+
+        # write data to sheets
+        for idx, data_id in enumerate(data):
+            ws2.cell(row=row, column=idx + 1).value = data_id
+
+            set_appearance(ws2, row, idx + 1, 'fg_fill', 'FFFFFF')
+            ws2.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+        # set appearance & style
+        if data[3] > 0:  # if hits > 0
+            if data[7] == "TRUE":  # if true
+                set_appearance(ws2, row, 4, 'font_color', '548235')
+                set_appearance(ws2, row, 5, 'font_color', '548235')
+            if data[7] == "FALSE":  # if false
+                set_appearance(ws2, row, 4, 'font_color', 'C00000')
+                set_appearance(ws2, row, 5, 'font_color', 'C00000')
+        else:  # no hits
+            set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
+            set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
 
 
-# def write_summary(scan_data):
-#     #########################################################################################################
-#     detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
-#     #########################################################################################################
-#
-#     row = 1
-#     scan_data.sort()
-#
-#     cwes = []
-#     unique_cwes = []
-#
-#     summary_sheet_titles = ['CWE', 'TCs (TRUE)', 'TCs (FALSE)', 'TP', 'FP', 'Precision', 'Recall']
-#
-#     ws1.freeze_panes = ws1['H2']
-#
-#     # write column headers
-#     for idx, title in enumerate(summary_sheet_titles):
-#         set_appearance(ws1, row, idx + 1, 'fg_fill', 'E6B8B7')
-#         ws1.cell(row=1, column=idx + 1).value = title
-#         ws1.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-#
-#     # for each cwe get total test cases
-#     for data in scan_data:
-#
-#         # cwe
-#         cwe = data[0]
-#         if cwe.endswith("a"):  # 123a and 771a
-#             cwe = cwe[:-1]
-#         cwes.append(cwe)
-#
-#     # collect unique cwe list
-#     unique_cwes = list(set(cwes))
-#     unique_cwes.sort()
-#
-#     # collect data for each cwe and summarize
-#     for cwe in unique_cwes:
-#
-#         tc_t = tc_f = tp = fp = prec = rec = 0
-#
-#         row += 1
-#
-#         for data in scan_data:
-#
-#             if cwe in data[0]:
-#                 # TRUE
-#                 if data[7] == "TRUE":
-#                     tc_t += data[2]
-#                     tp += data[3]
-#                 # FALSE
-#                 if data[7] == "FALSE":
-#                     tc_f += data[2]
-#                     fp += data[3]
-#                     # TODO: ADD BREAK OR CONTINUE HERE?
-#
-#         set_appearance(ws1, row, 1, 'fg_fill', 'C6C6C6')
-#         if tp == 0:  # dim if tp==0 ALSO AND WITH FP?
-#             set_appearance(ws1, row, 2, 'fg_fill', 'F2F2F2')
-#             set_appearance(ws1, row, 3, 'fg_fill', 'F2F2F2')
-#             set_appearance(ws1, row, 4, 'fg_fill', 'F2F2F2')
-#             set_appearance(ws1, row, 5, 'fg_fill', 'F2F2F2')
-#             set_appearance(ws1, row, 6, 'fg_fill', 'F2F2F2')
-#             set_appearance(ws1, row, 7, 'fg_fill', 'F2F2F2')
-#
-#         # PRECISION
-#         if (tp + fp != 0):
-#             prec = tp / (tp + fp)
-#             ws1.cell(row=row, column=6).value = round(prec, 2)
-#             ws1.cell(row=row, column=6).number_format = '0.00'
-#         else:
-#             ws1.cell(row=row, column=6).value = 'N/A'
-#             ws1.cell(row=row, column=6).alignment = Alignment(horizontal='right')
-#
-#         # RECALL
-#         recall = tp / tc_t
-#
-#         ws1.cell(row=row, column=1).value = cwe
-#         ws1.cell(row=row, column=2).value = tc_t
-#         ws1.cell(row=row, column=3).value = tc_f
-#         ws1.cell(row=row, column=4).value = tp
-#         ws1.cell(row=row, column=5).value = fp
-#         ws1.cell(row=row, column=7).value = round(recall, 2)
-#         ws1.cell(row=row, column=7).number_format = '0.00'
+def write_summary(scan_data):
+    #########################################################################################################
+    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
+    #########################################################################################################
+
+    row = 1
+    # scan_data.sort()#todo: will need to sort new data?
+
+    cwes = []
+
+    summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
+
+    ws1.freeze_panes = ws1['H2']
+
+    # write column headers
+    for idx, title in enumerate(summary_sheet_titles):
+        set_appearance(ws1, row, idx + 1, 'fg_fill', 'E6B8B7')
+        ws1.cell(row=1, column=idx + 1).value = title
+        ws1.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    for xml_project in scan_data.xml_projects:
+        cwes.append(getattr(xml_project, 'cwe_id_padded'))
+
+    unique_cwes = list(set(cwes))
+    unique_cwes.sort()
+
+    # collect data for each cwe and summarize
+    for cwe in unique_cwes:
+
+        tc_t = tc_f = tp = fp = prec = rec = 0
+
+        row += 1
+
+        for xml_project in scan_data.xml_projects:
+            if cwe == getattr(xml_project, 'cwe_id_padded'):
+                if 'TRUE' == getattr(xml_project, 'true_false'):
+                    tc_t += getattr(xml_project, 'tc_count')
+                    tp += getattr(xml_project, 'num_of_hits')
+                elif 'FALSE' == getattr(xml_project, 'true_false'):
+                    tc_f += getattr(xml_project, 'tc_count')
+                    fp += getattr(xml_project, 'num_of_hits')
+                    # todo: add break or continue to speed this up?
+
+        # for row1 in ws1.iter_rows('A1:C2'):
+        for row1 in ws1.iter_rows():
+            for cell in row1:
+                if cell.col_idx > 1:
+                    if tp == 0:
+                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'F2F2F2')
+                    else:
+                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'FFFFFF')
+
+                    ws1.cell(row=row, column=cell.col_idx - 1).alignment = Alignment(horizontal='right')
+
+        set_appearance(ws1, row, 1, 'fg_fill', 'C6C6C6')
+
+        # PRECISION
+        if tp + fp != 0:
+            prec = tp / (tp + fp)
+            ws1.cell(row=row, column=6).value = round(prec, 2)
+            ws1.cell(row=row, column=6).number_format = '0.00'
+        else:
+            ws1.cell(row=row, column=6).value = 'N/A'
+            ws1.cell(row=row, column=6).alignment = Alignment(horizontal='right')
+
+        # RECALL
+        recall = tp / tc_t
+
+        # todo: format numbers with commas
+        ws1.cell(row=row, column=1).value = cwe
+        ws1.cell(row=row, column=2).value = format(tc_t, ",d")
+        ws1.cell(row=row, column=3).value = format(tc_f, ",d")
+        ws1.cell(row=row, column=4).value = format(tp, ",d")
+        ws1.cell(row=row, column=5).value = format(fp, ",d")
+        ws1.cell(row=row, column=7).value = round(recall, 2)
+        ws1.cell(row=row, column=7).number_format = '0.00'
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id):
@@ -1194,49 +1191,51 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id):
     cell.border = thin_border
 
 
-# def create_summary_chart():
-#     chart1 = BarChart()
-#     chart1.type = 'col'
-#     chart1.style = 11
-#     chart1.y_axis.title = 'Score'
-#     chart1.x_axis.title = 'CWE Number'
-#     data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
-#     cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-#     chart1.add_data(data, titles_from_data=True)
-#     chart1.set_categories(cats)
-#     chart1.shape = 4
-#     chart1.title = 'Protection Profile Scores'
-#     auto_axis = True
-#     chart1.y_axis.scaling.min = 0
-#     chart1.y_axis.scaling.max = 1
-#     chart1.height = 15
-#     chart1.width = 45
-#     # chart1.set_x_axis({'num_font':  {'rotation': 270}})
-#
-#     ws1.add_chart(chart1, 'H2')
+def create_summary_chart():
+    chart1 = BarChart()
+    chart1.type = 'col'
+    chart1.style = 11
+    chart1.y_axis.title = 'Score'
+    chart1.x_axis.title = 'CWE Number'
+    data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    chart1.add_data(data, titles_from_data=True)
+    chart1.set_categories(cats)
+    chart1.shape = 4
+    chart1.title = 'Protection Profile Scores'
+    auto_axis = True
+    chart1.y_axis.scaling.min = 0
+    chart1.y_axis.scaling.max = 1
+    # chart1.height = 15
+    # chart1.width = 45
+    chart1.height = 10
+    chart1.width = 30
+    # chart1.set_x_axis({'num_font':  {'rotation': 270}})
+
+    ws1.add_chart(chart1, 'H2')
 
 
-# def write_opp_counts_to_sheet(juliet_f_hits):
-#     op_sheet_list = []
-#
-#     for file in juliet_f_hits:
-#         file_name = str(file[0])
-#         line_no = str(file[1])
-#
-#         op_sheet_list.append([file_name, line_no])
-#
-#     write_opp_counts(op_sheet_list)
+def write_opp_counts_to_sheet(juliet_f_hits):
+    op_sheet_list = []
+
+    for file in juliet_f_hits:
+        file_name = str(file[0])
+        line_no = str(file[1])
+
+        op_sheet_list.append([file_name, line_no])
+
+    write_opp_counts(op_sheet_list)
 
 
-# def dedup_multi_dim_list(mylist):
-#     seen = set()
-#     newlist = []
-#     for item in mylist:
-#         t = tuple(item)
-#         if t not in seen:
-#             newlist.append(item)
-#             seen.add(t)
-#     return newlist
+def dedup_multi_dim_list(mylist):
+    seen = set()
+    newlist = []
+    for item in mylist:
+        t = tuple(item)
+        if t not in seen:
+            newlist.append(item)
+            seen.add(t)
+    return newlist
 
 
 def import_weakness_ids(suite_dat):
@@ -1323,13 +1322,11 @@ if __name__ == '__main__':
 
     # write to sheets
     write_details(suite_data)
-
-    '''
-    write_summary(data)
+    # write_summary(data)
+    write_summary(suite_data)
     create_summary_chart()
-    '''
-    # wb.active = 0 #todo: return to this value after debug
-    wb.active = 1
+
+    wb.active = 0
     wb.save(scorecard)
 
     py_common.print_with_timestamp('--- FINISHED SCORING ---')
