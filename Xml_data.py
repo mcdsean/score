@@ -47,7 +47,7 @@ class Suite(object):
 
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
-        self.used_weakness_ids = []
+        self.used_wids_per_cwe = []
 
         # auto-run methods on creation
         self.create_xml_dir()

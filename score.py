@@ -4,24 +4,23 @@
 #
 # 2016-12-01 smcdonagh@keywcorp.com: initial version
 #
-import sys, os, re, argparse, shutil, py_common
+import os, re, argparse, shutil, py_common
 import xml.etree.ElementTree as ET
-import subprocess, zipfile
+import zipfile
 
 from Xml_data import Suite
 
 from time import strftime
 from openpyxl import load_workbook
-from openpyxl.styles import Border, Side, PatternFill, Font, Color, GradientFill, Alignment
-from openpyxl.chart import BarChart, Reference, Series
+from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
+from openpyxl.chart import BarChart, Reference
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
 
 TOOL_NAME = 'fortify'
-#FVDL_NAME = 'audit.fvdl'  # todo: remove this since now in class
 XML_OUTPUT_DIR = 'xmls'
-WID_SEPERATOR_FORTIFY = ':'
+WID_DELIMITER_FORTIFY = ':'
 
 def format_workbook():
     '''
@@ -48,7 +47,7 @@ def format_workbook():
     ws2.column_dimensions['D'].width = 5
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 5
-    ws2.column_dimensions['G'].width = 45
+    ws2.column_dimensions['G'].width = 40
     ws2.column_dimensions['H'].width = 62
     ws2.column_dimensions['I'].width = 105
     ws2.sheet_view.zoomScale = 85
@@ -410,7 +409,7 @@ def get_schemas(suite_dat):
     return schemas, weakness_id_schemas
 
 
-def parse_xml(suite_dat):
+def score_xmls(suite_dat):
     ns = {}
     wid_pieces_that_hit = []
 
@@ -455,7 +454,7 @@ def parse_xml(suite_dat):
             # 4. look at each non-empty cell in the spreadsheet for acceptable wids
             for good_wid in good_wids:
                 if tool_name == 'fortify':
-                    good_wid_pieces = good_wid.split(WID_SEPERATOR_FORTIFY)
+                    good_wid_pieces = good_wid.split(WID_DELIMITER_FORTIFY)
                 else:
                     good_wid_pieces = good_wid
 
@@ -495,7 +494,7 @@ def parse_xml(suite_dat):
 def import_xml_tags_ORIGINAL(suite_dat):
     row = 0
 
-    parse_xml(suite_dat)
+    score_xmls(suite_dat)
     ns = getattr(suite_data, 'name_space')
 
     ws = wb.get_sheet_by_name('XML Tags')
@@ -1208,8 +1207,8 @@ def create_summary_chart():
     chart1.y_axis.scaling.max = 1
     # chart1.height = 15
     # chart1.width = 45
-    chart1.height = 10
-    chart1.width = 30
+    chart1.height = 15
+    chart1.width = 40
     # chart1.set_x_axis({'num_font':  {'rotation': 270}})
 
     ws1.add_chart(chart1, 'H2')
@@ -1267,6 +1266,59 @@ def import_weakness_ids(suite_dat):
                 break
 
 
+def remove_duplicates(numbers):
+    newlist = []
+    for number in numbers:
+        if number not in newlist:
+            newlist.append(number)
+    return newlist
+
+
+def flatten(lis):
+    for item in lis:
+        if isinstance(item, Iterable) and not isinstance(item, basestring):
+            for x in flatten(item):
+                yield x
+        else:
+            yield item
+    return lis
+
+
+def get_used_wids(scan_data):
+    cwes = []
+
+    for xml_project in scan_data.xml_projects:
+        cwes.append(getattr(xml_project, 'cwe_id_padded'))
+    unique_cwes = list(set(cwes))
+    unique_cwes.sort()  # todo: dont think this is necessary
+
+    for cwe in unique_cwes:
+
+        used_wids_per_cwe = []
+        new_list2 = []
+
+        # go thru each project looing for this cwe
+        for xml_project in suite_data.xml_projects:
+
+            # if the cwe for this project matches, get it's wids
+            if cwe == getattr(xml_project, 'cwe_id_padded'):
+                used_wids_per_cwe.append(getattr(xml_project, 'used_wids'))
+                # put all of the pieces into a single dimension array
+                for wid in used_wids_per_cwe:
+                    new_list2.append(wid)
+            else:
+                continue
+
+        new_list2 = [item for sublist in new_list2 for item in sublist]
+        new_list2 = list(set(new_list2))
+        updated_list = getattr(scan_data, 'used_wids_per_cwe')
+
+        updated_list.append([cwe, new_list2])
+
+        setattr(scan_data, 'used_wids_per_cwe', updated_list)
+        # todo: paint the vendor input wids if found (or not found)
+
+
 if __name__ == '__main__':
 
     data = []
@@ -1312,19 +1364,17 @@ if __name__ == '__main__':
 
     # import tag data
     import_xml_tags(suite_data)
-
     # import weakness ids
     import_weakness_ids(suite_data)
-    parse_xml(suite_data)
-    # score the data
-    #auto_score(suite_data)
-
-
+    # score the xml projects
+    score_xmls(suite_data)
     # write to sheets
     write_details(suite_data)
-    # write_summary(data)
     write_summary(suite_data)
     create_summary_chart()
+    # get a summary of all used wids
+    get_used_wids(suite_data)
+
 
     wb.active = 0
     wb.save(scorecard)
