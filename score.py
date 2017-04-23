@@ -8,7 +8,7 @@ import os, re, argparse, shutil, py_common
 import xml.etree.ElementTree as ET
 import zipfile
 
-from suite import Suite
+from suite import Suite, TestCase
 
 from time import strftime
 from openpyxl import load_workbook
@@ -417,8 +417,9 @@ def score_xmls(suite_dat):
 
     for xml_project in suite_data.xml_projects:
 
-        test_case_files = []
         used_wids = []
+        test_cases = []
+        test_case_files = []
 
         # read namespace from the first xml since it will be the same for all other xmls
         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
@@ -443,6 +444,7 @@ def score_xmls(suite_dat):
 
             # 2. get path(filename) and line number for this row in this xml
             file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
+            line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
             filename = os.path.basename(file_path)
 
             # 3. get all pieces of the wid for this row in the xml
@@ -470,26 +472,37 @@ def score_xmls(suite_dat):
                         if good_wid not in used_wids:
                             used_wids.append(good_wid)
 
+                        test_case_files.append([filename, line_number])
+
                         # todo: consider using 'not in' like above, but may want to write all to sheet instead?
                         if test_case_type == 'juliet':
                             filename = re.sub('[a-z]?\.\w+$', '', filename)
-                            test_case_files.append(filename)
+                            test_cases.append(filename)
                         elif test_case_type == 'kdm':
                             if not filename.endswith(".h") and not filename.endswith("_a.c") and not filename.endswith(
                                     ".obj") and filename.startswith("SFP"):
-                                test_case_files.append(filename)
+                                test_cases.append(filename)
+
+                    #############
+                    # self.xml_projects.append(
+                    #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
+
+                    test_case_file = getattr(xml_project, 'test_cases')
+                    test_case_file.append(TestCase(filename))
+                    setattr(xml_project, 'test_cases', test_case_file)
+                    #############
 
                 # empty good wid cell so move on
                 else:
                     continue
 
-        score = len(set(test_case_files))
+        score = len(set(test_cases))
 
         print('SCORE:', score)
         setattr(xml_project, 'num_of_hits', score)
-        setattr(xml_project, 'files_that_hit', test_case_files)
         setattr(xml_project, 'used_wids', used_wids)
-
+        setattr(xml_project, 'test_cases_that_hit', test_cases)
+        setattr(xml_project, 'test_case_files_that_hit', test_case_files)
 
 def import_xml_tags_ORIGINAL(suite_dat):
     row = 0
@@ -1297,7 +1310,7 @@ def get_used_wids(scan_data):
         used_wids_per_cwe = []
         new_list2 = []
 
-        # go thru each project looing for this cwe
+        # go thru each project looking for this cwe
         for xml_project in suite_data.xml_projects:
 
             # if the cwe for this project matches, get it's wids

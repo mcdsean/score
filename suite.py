@@ -5,16 +5,9 @@ import py_common
 FVDL_NAME = "audit.fvdl"
 
 
-# class TestCase(object, cwe):
-#     def __init__(self, cwe):
-#         self.tc_cwe = cwe
-#
-#     #def create_test_case(self):
-#
-#
-#         # self.xml_projects.append(
-#         #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
-
+class TestCase(object):
+    def __init__(self, filename):
+        self.tc_file_name = filename
 
 
 class Xml(object):
@@ -39,12 +32,11 @@ class Xml(object):
         self.acceptable_weakness_ids = []
         self.used_wids = []
 
-        self.files_that_hit = []
+        self.test_case_files_that_hit = []
+        self.test_cases_that_hit = []
 
         print('PROJECT FILE---', self.scan_data_file)
 
-    def test(self, u_wids):
-        self.used_wids = u_wids
 
 class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):
