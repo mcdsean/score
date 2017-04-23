@@ -5,9 +5,16 @@ import py_common
 FVDL_NAME = "audit.fvdl"
 
 
-class TestCase(object):
-    def __init__(self, cwe):
-        self.tc_cwe = cwe
+# class TestCase(object, cwe):
+#     def __init__(self, cwe):
+#         self.tc_cwe = cwe
+#
+#     #def create_test_case(self):
+#
+#
+#         # self.xml_projects.append(
+#         #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
+
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
@@ -18,6 +25,10 @@ class Xml(object):
         self.tc_lang = tc_lang
         self.new_xml_name = new_xml_name
         self.scan_data_file = scan_data_file
+
+        # list of test case objects
+        self.test_cases = []
+
         # runtime attributes
         self.tc_count = ''
         self.num_of_hits = ''

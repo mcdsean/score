@@ -1368,12 +1368,13 @@ if __name__ == '__main__':
     import_weakness_ids(suite_data)
     # score the xml projects
     score_xmls(suite_data)
+    # get a summary of all used wids
+    get_used_wids(suite_data)
+
     # write to sheets
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
-    # get a summary of all used wids
-    get_used_wids(suite_data)
 
 
     wb.active = 0
