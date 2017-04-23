@@ -8,7 +8,7 @@ import os, re, argparse, shutil, py_common
 import xml.etree.ElementTree as ET
 import zipfile
 
-from Xml_data import Suite
+from suite import Suite
 
 from time import strftime
 from openpyxl import load_workbook
