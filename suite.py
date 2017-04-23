@@ -16,6 +16,7 @@ FVDL_NAME = "audit.fvdl"
 #         #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
 
 
+
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
         self.cwe_id_padded = cwe_id_padded
