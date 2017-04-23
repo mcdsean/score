@@ -1376,7 +1376,6 @@ if __name__ == '__main__':
     write_summary(suite_data)
     create_summary_chart()
 
-
     wb.active = 0
     wb.save(scorecard)
 
