@@ -53,8 +53,8 @@ def format_workbook():
     ws2.sheet_view.zoomScale = 85
 
     # opp
-    ws3.column_dimensions['A'].width = 93
-    ws3.column_dimensions['B'].width = 10
+    ws3.column_dimensions['A'].width = 73
+    ws3.column_dimensions['B'].width = 6
     ws3.column_dimensions['C'].width = 10
     ws3.column_dimensions['D'].width = 11
 
@@ -504,6 +504,7 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'test_cases_that_hit', test_cases)
         setattr(xml_project, 'test_case_files_that_hit', test_case_files)
 
+
 def import_xml_tags_ORIGINAL(suite_dat):
     row = 0
 
@@ -922,41 +923,6 @@ def get_opp_counts_per_file(file_path):
     return opp_counts  # consider sorting these for speed?
 
 
-def write_opp_counts(op_data):
-    row = 1
-
-    ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
-    ##############################################################################################################
-
-
-    # perform multi-column sorts
-    # scan_data.sort(key=sort)
-
-    # freeze first row and column
-    ws3.freeze_panes = ws3['A2']
-
-    # write column headers
-    for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
-        ws3.cell(row=1, column=idx + 1).value = title
-        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    for data in op_data:
-
-        row += 1
-
-        # write data to sheets
-        for idx, data_id in enumerate(data):
-            ws3.cell(row=row, column=idx + 1).value = data_id
-
-            print("data_id", data_id)
-            set_appearance(ws3, row, idx + 1, 'fg_fill', 'FFFFFF')
-            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-
-
 def opp_counts_by_file_ORIGINAL(project_path):  # todo: argument = project path
 
     opp_counts = {}
@@ -1227,7 +1193,68 @@ def create_summary_chart():
     ws1.add_chart(chart1, 'H2')
 
 
-def write_opp_counts_to_sheet(juliet_f_hits):
+def write_opp_counts(suite_dat):
+    row = 1
+
+    ##############################################################################################################
+    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
+    ##############################################################################################################
+
+    # perform multi-column sorts
+    # scan_data.sort(key=sort)
+
+    # freeze first row and column
+    ws3.freeze_panes = ws3['A2']
+
+    # write column headers
+    for idx, title in enumerate(opportunity_count_sheet_titles):
+        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
+        ws3.cell(row=1, column=idx + 1).value = title
+        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    ws3.sheet_properties.tabColor = "A9D08E"
+
+    row = 1
+    for xml_project in suite_dat.xml_projects:
+
+        test_case_files_that_hit = getattr(xml_project, 'test_case_files_that_hit')
+
+        # write data to sheets
+        for file in test_case_files_that_hit:
+            row += 1
+
+            # ws3.cell(row=idx2+2, column=1).value = file_name[0]
+            ws3.cell(row=row, column=1).value = file[0]
+            ws3.cell(row=row, column=2).value = file[1]
+            # todo: put this in a loop
+            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
+            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
+            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+    print('DONE', row)
+
+
+def write_opp_counts_to_sheet(suite_dat):
+    test_case_files_that_hit = []
+
+    for xml_project in suite_dat.xml_projects:
+        test_case_files_that_hit.append(getattr(xml_project, 'test_case_files_that_hit'))
+
+
+        # for idx, file in enumerate(test_case_files_that_hit):
+        #     # file_name = str(file[0])
+        #     # line_no = str(file[1])
+        #
+        #     file_name = file[idx][0]
+        #     line_no = file[idx][1]
+        #
+        #     test_case_files_that_hit.append([file_name, line_no])
+
+    write_opp_counts(test_case_files_that_hit)
+
+
+def write_opp_counts_to_sheet_ORIGINAL(juliet_f_hits):
     op_sheet_list = []
 
     for file in juliet_f_hits:
@@ -1388,6 +1415,7 @@ if __name__ == '__main__':
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
+    write_opp_counts(suite_data)
 
     wb.active = 0
     wb.save(scorecard)
