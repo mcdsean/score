@@ -1214,7 +1214,6 @@ def write_opp_counts(suite_dat):
 
     ws3.sheet_properties.tabColor = "A9D08E"
 
-    row = 1
     for xml_project in suite_dat.xml_projects:
 
         test_case_files_that_hit = getattr(xml_project, 'test_case_files_that_hit')

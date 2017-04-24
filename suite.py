@@ -8,6 +8,7 @@ FVDL_NAME = "audit.fvdl"
 class TestCase(object):
     def __init__(self, filename):
         self.tc_file_name = filename
+        # todo: add more fields
 
 
 class Xml(object):
