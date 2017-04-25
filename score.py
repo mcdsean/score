@@ -12,8 +12,8 @@ from suite import Suite, TestCase
 
 from time import strftime
 
-from openpyxl import load_workbook, formatting, styles
-from openpyxl.styles import Border, Side, PatternFill, Font, Alignment, Color, Fill, fills
+from openpyxl import load_workbook
+from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, Reference
 # from openpyxl.formatting.rule import ColorScaleRule
 
@@ -508,6 +508,89 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'used_wids', used_wids)
         setattr(xml_project, 'test_cases_that_hit', test_cases)
         setattr(xml_project, 'test_case_files_that_hit', test_case_files)
+
+
+def write_opp_counts(suite_dat):
+    row = 1
+
+    ##############################################################################################################
+    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
+    ##############################################################################################################
+
+    # perform multi-column sorts
+    # suite_data.sort(key=sort)
+
+    # **********************************************
+    # todo: attempt to highlight all duplicates using the Excel conditional formatting methods
+    # from openpyxl import formatting, styles
+
+    # wb = Workbook()
+    # ws3 = wb.active
+
+    red_color = 'ffc7ce'
+    red_color_font = '9c0103'
+
+    # ^^^^^
+    # red_font = styles.Font(size=14, bold=True, color=red_color_font)
+    # red_fill = styles.PatternFill(start_color=red_color, end_color=red_color, fill_type='solid')
+    #
+    # for row in range(1, 10):
+    #     ws3.cell(row=row, column=1, value=row - 5)
+    #     ws3.cell(row=row, column=2, value=row - 5)
+    #
+    # ws3.conditional_formatting.add('A1:A10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill, font=red_font))
+    # ws3.conditional_formatting.add('B1:B10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill))
+    # ^^^^^^^^
+
+    rule = ColorScaleRule(start_type="min", start_color="247CBD", end_type="max", end_color="247CBD")
+    range_string = "A2:A5"
+    ws3.conditional_formatting.add(range_string, rule)
+    # **********************************************
+
+    # freeze first row and column
+    ws3.freeze_panes = ws3['A2']
+
+    # write column headers
+    for idx, title in enumerate(opportunity_count_sheet_titles):
+        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
+        ws3.cell(row=1, column=idx + 1).value = title
+        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    ws3.sheet_properties.tabColor = "A9D08E"
+
+    for xml_project in suite_dat.xml_projects:
+        temp = []
+        seen = set()
+
+        test_case_objects = getattr(xml_project, 'test_cases')
+
+        for test_case_obj in test_case_objects:
+            row += 1
+
+            # write the relative path and file name to ws3
+            ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
+
+            temp.append(test_case_obj.tc_file_name)
+
+            # sort by file name so that the duplicates are grouped together
+            test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
+
+            # todo: put this in a loop
+            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
+            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
+            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+        # identify the duplicate file+lineno combos
+        for n in temp:
+            if n in seen:
+                ws3.cell(row=row, column=3).value = n
+                print("duplicate:", n)
+            else:
+                seen.add(n)
+
+        print('done with project:')
+
 
 
 def import_xml_tags_ORIGINAL(suite_dat):
@@ -1196,75 +1279,6 @@ def create_summary_chart():
     # chart1.set_x_axis({'num_font':  {'rotation': 270}})
 
     ws1.add_chart(chart1, 'H2')
-
-
-def write_opp_counts(suite_dat):
-    row = 1
-
-    ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
-    ##############################################################################################################
-
-    # perform multi-column sorts
-    # suite_data.sort(key=sort)
-
-    # **********************************************
-    # from openpyxl import formatting, styles
-
-    # wb = Workbook()
-    # ws3 = wb.active
-
-    red_color = 'ffc7ce'
-    red_color_font = '9c0103'
-
-    # ^^^^^
-    # red_font = styles.Font(size=14, bold=True, color=red_color_font)
-    # red_fill = styles.PatternFill(start_color=red_color, end_color=red_color, fill_type='solid')
-    #
-    # for row in range(1, 10):
-    #     ws3.cell(row=row, column=1, value=row - 5)
-    #     ws3.cell(row=row, column=2, value=row - 5)
-    #
-    # ws3.conditional_formatting.add('A1:A10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill, font=red_font))
-    # ws3.conditional_formatting.add('B1:B10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill))
-    # ^^^^^^^^
-
-    rule = ColorScaleRule(start_type="min", start_color="247CBD", end_type="max", end_color="247CBD")
-    range_string = "A2:A5"
-    ws3.conditional_formatting.add(range_string, rule)
-    #**********************************************
-
-
-    # freeze first row and column
-    ws3.freeze_panes = ws3['A2']
-
-    # write column headers
-    for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
-        ws3.cell(row=1, column=idx + 1).value = title
-        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    for xml_project in suite_dat.xml_projects:
-
-        test_case_objects = getattr(xml_project, 'test_cases')
-        for test_case_obj in test_case_objects:
-            print('TCOBJ', test_case_obj.tc_file_name)
-
-            row += 1
-
-            ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
-
-            # todo: put this in a loop
-            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
-            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
-            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-
-            test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
-
-    print('DONE', row)
 
 
 def write_opp_counts_ORIGINAL(suite_dat):
