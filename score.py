@@ -4,16 +4,20 @@
 #
 # 2016-12-01 smcdonagh@keywcorp.com: initial version
 #
-import os, re, argparse, shutil, py_common
+import os, re, argparse, shutil, py_common, operator
 import xml.etree.ElementTree as ET
 import zipfile
 
 from suite import Suite, TestCase
 
 from time import strftime
-from openpyxl import load_workbook
-from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
+
+from openpyxl import load_workbook, formatting, styles
+from openpyxl.styles import Border, Side, PatternFill, Font, Alignment, Color, Fill, fills
 from openpyxl.chart import BarChart, Reference
+# from openpyxl.formatting.rule import ColorScaleRule
+
+from openpyxl.formatting.rule import ColorScaleRule
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
@@ -53,10 +57,11 @@ def format_workbook():
     ws2.sheet_view.zoomScale = 85
 
     # opp
-    ws3.column_dimensions['A'].width = 73
+    ws3.column_dimensions['A'].width = 100
     ws3.column_dimensions['B'].width = 6
     ws3.column_dimensions['C'].width = 10
     ws3.column_dimensions['D'].width = 11
+    ws3.sheet_view.zoomScale = 80
 
 
 def count_kdm_test_cases(fpr_name):
@@ -488,7 +493,7 @@ def score_xmls(suite_dat):
                     #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
 
                     test_case_file = getattr(xml_project, 'test_cases')
-                    test_case_file.append(TestCase(filename))
+                    test_case_file.append(TestCase(file_path))
                     setattr(xml_project, 'test_cases', test_case_file)
                     #############
 
@@ -1194,6 +1199,75 @@ def create_summary_chart():
 
 
 def write_opp_counts(suite_dat):
+    row = 1
+
+    ##############################################################################################################
+    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
+    ##############################################################################################################
+
+    # perform multi-column sorts
+    # suite_data.sort(key=sort)
+
+    # **********************************************
+    # from openpyxl import formatting, styles
+
+    # wb = Workbook()
+    # ws3 = wb.active
+
+    red_color = 'ffc7ce'
+    red_color_font = '9c0103'
+
+    # ^^^^^
+    # red_font = styles.Font(size=14, bold=True, color=red_color_font)
+    # red_fill = styles.PatternFill(start_color=red_color, end_color=red_color, fill_type='solid')
+    #
+    # for row in range(1, 10):
+    #     ws3.cell(row=row, column=1, value=row - 5)
+    #     ws3.cell(row=row, column=2, value=row - 5)
+    #
+    # ws3.conditional_formatting.add('A1:A10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill, font=red_font))
+    # ws3.conditional_formatting.add('B1:B10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill))
+    # ^^^^^^^^
+
+    rule = ColorScaleRule(start_type="min", start_color="247CBD", end_type="max", end_color="247CBD")
+    range_string = "A2:A5"
+    ws3.conditional_formatting.add(range_string, rule)
+    #**********************************************
+
+
+    # freeze first row and column
+    ws3.freeze_panes = ws3['A2']
+
+    # write column headers
+    for idx, title in enumerate(opportunity_count_sheet_titles):
+        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
+        ws3.cell(row=1, column=idx + 1).value = title
+        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    ws3.sheet_properties.tabColor = "A9D08E"
+
+    for xml_project in suite_dat.xml_projects:
+
+        test_case_objects = getattr(xml_project, 'test_cases')
+        for test_case_obj in test_case_objects:
+            print('TCOBJ', test_case_obj.tc_file_name)
+
+            row += 1
+
+            ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
+
+            # todo: put this in a loop
+            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
+            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
+            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+            test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
+
+    print('DONE', row)
+
+
+def write_opp_counts_ORIGINAL(suite_dat):
     row = 1
 
     ##############################################################################################################
