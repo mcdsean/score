@@ -523,7 +523,6 @@ def write_opp_counts(suite_dat):
     ##############################################################################################################
 
     row = 1
-    seen = set()
     file_names_and_line_numbs = []
 
     # freeze first row and column
@@ -545,31 +544,67 @@ def write_opp_counts(suite_dat):
     # sort the list by file name and then line number
     file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
 
-    dups = []  # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
+    # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
+    file_name_dups = []
+    file_seen = set()
+    previous_file = ''
+    previous_line = 0
 
     for file_name_and_numb in file_names_and_line_numbs:
+
         ws3.cell(row=row + 1, column=1).value = file_name_and_numb[0]
         ws3.cell(row=row + 1, column=2).value = file_name_and_numb[1]
         # set appearance and alignment
+        # todo: put this in a loop to cover all columns which is not determined yet
         set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
         set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
         ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
 
-        # todo: move this to score_xmls
-        # identify the duplicate file+lineno combos
-        if file_name_and_numb[0] in seen:
-            dups.append(file_name_and_numb[0])
+        # todo: move this to score_xmls...THIS WORKS
+        # identify the duplicate files only
+        if file_name_and_numb[0] in file_seen:
+            file_name_dups.append(file_name_and_numb[0])
             ws3.cell(row=row, column=3).value = file_name_and_numb[0]  # todo: DEBUG code, delete when thru
         else:
-            seen.add(file_name_and_numb[0])
+            file_seen.add(file_name_and_numb[0])
+
+        # # todo: move this to score_xmls...EXPERIMENTAL
+        # # identify the duplicate files only
+        # if file_name_and_numb in file_seen:
+        #     file_dups.append(file_name_and_numb)
+        #     ws3.cell(row=row, column=3).value = file_name_and_numb[0]  # todo: DEBUG code, delete when thru
+        # else:
+        #     file_seen.append(file_name_and_numb)
+
+
 
         row += 1
 
+    # deduped based on both file name and line
+    deduped_list = set(tuple(element) for element in file_names_and_line_numbs)
+    # NOTE: to convert set() back to list, use: [list(t) for t in set(tuple(element) for element in xx)]
+
     row = 1
+    # todo: consider de-duplicating all files with matching line numbers
+    # for each file check the duplicate list and highlight it if it is a duplicate
     for file_name_and_numb in file_names_and_line_numbs:
-        for dup in dups:
+        for dup in file_name_dups:
+            # if file name is duplicate, highlight it
             if file_name_and_numb[0] == dup:
                 set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
+                set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
+
+
+                # file namees with unique line numbers
+                # if file_name_and_numb[0] in deduped_list:
+                # if file_name_and_numb[0] in deduped_list:
+                #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
+                #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
+                # else:
+                #     # file names with matching line numbers
+                #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
+                #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
+
         row += 1
 
 
