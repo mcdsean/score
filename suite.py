@@ -9,6 +9,8 @@ class TestCase(object):
     def __init__(self, filename):
         # all of the file names within the test case
         self.tc_file_name = filename
+        # dublicate test case file names
+        self.duplicate_file_names = []
         # line number for each 'filename'
         self.line_numbers = []
         # total number of 'FIX' counts (juliet, false only)
@@ -18,8 +20,6 @@ class TestCase(object):
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
 
-
-        # todo: add more fields
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):

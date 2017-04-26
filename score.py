@@ -65,6 +65,7 @@ def format_workbook():
     ws3.column_dimensions['C'].width = 10
     ws3.column_dimensions['D'].width = 11
     ws3.sheet_view.zoomScale = 80
+    ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
 
 
 def count_kdm_test_cases(fpr_name):
@@ -516,44 +517,18 @@ def score_xmls(suite_dat):
 
 
 def write_opp_counts(suite_dat):
-    row = 1
 
     ##############################################################################################################
     opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
     ##############################################################################################################
 
-    # perform multi-column sorts
-    # suite_data.sort(key=sort)
-
-    # **********************************************
-    # todo: attempt to highlight all duplicates using the Excel conditional formatting methods
-    # from openpyxl import formatting, styles
-
-    # wb = Workbook()
-    # ws3 = wb.active
-
-    red_color = 'ffc7ce'
-    red_color_font = '9c0103'
-
-    # ^^^^^
-    # red_font = styles.Font(size=14, bold=True, color=red_color_font)
-    # red_fill = styles.PatternFill(start_color=red_color, end_color=red_color, fill_type='solid')
-    #
-    # for row in range(1, 10):
-    #     ws3.cell(row=row, column=1, value=row - 5)
-    #     ws3.cell(row=row, column=2, value=row - 5)
-    #
-    # ws3.conditional_formatting.add('A1:A10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill, font=red_font))
-    # ws3.conditional_formatting.add('B1:B10', formatting.CellIsRule(operator='lessThan', formula=['0'], fill=red_fill))
-    # ^^^^^^^^
-
-    rule = ColorScaleRule(start_type="min", start_color="247CBD", end_type="max", end_color="247CBD")
-    range_string = "A2:A5"
-    ws3.conditional_formatting.add(range_string, rule)
-    # **********************************************
+    row = 1
+    seen = set()
+    file_names_and_line_numbs = []
 
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
+    ws3.sheet_properties.tabColor = "A9D08E"
 
     # write column headers
     for idx, title in enumerate(opportunity_count_sheet_titles):
@@ -561,65 +536,59 @@ def write_opp_counts(suite_dat):
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    temp = []
-    sorted_list = []
-
+    # all tese cases files names, and line, from each test cases object
     for xml_project in suite_dat.xml_projects:
-        test_case_objects = getattr(xml_project, 'test_cases')
+        test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
-            temp.append(test_case_obj.tc_file_name)
+            file_names_and_line_numbs.append(test_case_obj.tc_file_name)
 
-            #sorted_list.append(temp.sort(key=operator.itemgetter(0)))
+    # sort the list by file name and then line number
+    file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
 
-    # temp.sort(key=sort)
-    sorted_list = sorted(temp, key=operator.itemgetter(0, 1))
+    dups = []  # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
 
-    print(sorted_list)
-    # sorted_list = sorted(test_case_objects, key=lambda x: x.tc_file_name)
+    for file_name_and_numb in file_names_and_line_numbs:
+        ws3.cell(row=row + 1, column=1).value = file_name_and_numb[0]
+        ws3.cell(row=row + 1, column=2).value = file_name_and_numb[1]
+        # set appearance and alignment
+        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
+        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
+        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
 
-    for item in temp:
-        ws3.cell(row=row + 1, column=1).value = sorted_list[row - 1][0]
-        ws3.cell(row=row + 1, column=2).value = sorted_list[row - 1][1]
-        # ws3.cell(row=row, column=2).number_format = '#,##0'
+        # todo: move this to score_xmls
+        # identify the duplicate file+lineno combos
+        if file_name_and_numb[0] in seen:
+            dups.append(file_name_and_numb[0])
+            ws3.cell(row=row, column=3).value = file_name_and_numb[0]  # todo: DEBUG code, delete when thru
+        else:
+            seen.add(file_name_and_numb[0])
 
         row += 1
 
-    # for xml_project in suite_dat.xml_projects:
-    #     test_case_objects = getattr(xml_project, 'test_cases')
-    #     for test_case_obj in test_case_objects:
-    #
-    #         row += 1
-    #
-    #         # todo: sorting is not working as desired
-    #         # sort by file name so that the duplicates are grouped together
-    #         # test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
-    #
-    #
-    #         # write the relative path and file name to ws3
-    #         #ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
-    #         # ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name[0]
-    #         # ws3.cell(row=row, column=2).value = test_case_obj.tc_file_name[1]
-    #         ws3.cell(row=row, column=1).value = sorted_list[row-2]
-    #         # todo: put this in a loop
-    #         set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
-    #         set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
-    #         ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-    #         ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+    row = 1
+    for file_name_and_numb in file_names_and_line_numbs:
+        for dup in dups:
+            if file_name_and_numb[0] == dup:
+                set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
+        row += 1
 
 
 
-    # todo: keep this
-    #  identify the duplicate file+lineno combos
-    # for n in temp:
-    #     if n in seen:
-    #         ws3.cell(row=row, column=3).value = n
-    #         print("duplicate:", n)
-    #     else:
-    #         seen.add(n)
-    #
-    print('done with project:')
+
+        # row2 = 1
+        #
+        # for item in file_names_and_line_numbs[0]:
+        #     seen = set()
+        #     #todo: keep this
+        #     # identify the duplicate file+lineno combos
+        #     for n in temp:
+        #         if n in seen:
+        #             ws3.cell(row=row2, column=3).value = n
+        #             print("duplicate:", n)
+        #             ws3.cell(row=row2, column=2).fill = PatternFill(bgColor="FFC7CE", fill_type="solid")
+        #         else:
+        #             seen.add(n)
+        #     row2 += 1
 
 
 def sort(v):  # for sorting
@@ -1273,7 +1242,6 @@ def write_summary(scan_data):
         ws1.cell(row=row, column=3).number_format = '#,##0'
         ws1.cell(row=row, column=4).number_format = '#,##0'
         ws1.cell(row=row, column=5).number_format = '#,##0'
-
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id):
