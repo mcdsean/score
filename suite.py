@@ -16,7 +16,7 @@ class TestCase(object):
         # total number of 'FIX' counts (juliet, false only)
         self.opp_counts = 0
         # line numbers for start and end of each acceptable opp boundary
-        self.opp_boundaries = []
+        self.opp_blocks = []
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
 

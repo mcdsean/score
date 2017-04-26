@@ -60,7 +60,7 @@ def format_workbook():
     ws2.sheet_view.zoomScale = 85
 
     # opp
-    ws3.column_dimensions['A'].width = 179
+    ws3.column_dimensions['A'].width = 146
     ws3.column_dimensions['B'].width = 6
     ws3.column_dimensions['C'].width = 10
     ws3.column_dimensions['D'].width = 11
@@ -547,8 +547,91 @@ def write_opp_counts(suite_dat):
     # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
     file_name_dups = []
     file_seen = set()
-    previous_file = ''
-    previous_line = 0
+    previous_file_name_and_line = []
+
+    for file_name_and_line in file_names_and_line_numbs:
+
+        # write the file name and line for each hit
+        ws3.cell(row=row + 1, column=1).value = file_name_and_line[0]
+        ws3.cell(row=row + 1, column=2).value = file_name_and_line[1]
+        # set appearance and alignment
+        # todo: put this in a loop to cover all columns which is not determined yet
+        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
+        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
+        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
+
+        # todo: move this to score_xmls...THIS WORKS
+        # identify the duplicate files only
+        if file_name_and_line[0] in file_seen:
+            file_name_dups.append(file_name_and_line[0])
+            ws3.cell(row=row, column=3).value = file_name_and_line[0]  # todo: DEBUG code, delete when thru
+        else:
+            file_seen.add(file_name_and_line[0])
+
+        row += 1
+
+    row = 1
+    # todo: consider de-duplicating all files with matching line numbers
+    # for each file name check the duplicate list and highlight it if it is a duplicate
+    for file_name_and_line in file_names_and_line_numbs:
+
+        for dup_file_name in file_name_dups:
+
+            # if file name is a duplicate, highlight it's row
+            if file_name_and_line[0] == dup_file_name:
+
+                if previous_file_name_and_line == file_name_and_line:
+                    # todo: put in loop to cove all cols
+                    # todo: write this info to the test case object
+                    #  gray - file name an line combo are not unique if
+                    #  previous sorted value is identical to this sample
+                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
+                    # adjust previous row
+                    set_appearance(ws3, row, 1, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 2, 'fg_fill', 'D9D9D9')
+
+                else:
+                    # red - unique file name and line number
+                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
+                previous_file_name_and_line = file_name_and_line
+
+        row += 1
+
+
+def write_opp_counts_1(suite_dat):
+    ##############################################################################################################
+    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
+    ##############################################################################################################
+
+    row = 1
+    file_names_and_line_numbs = []
+
+    # freeze first row and column
+    ws3.freeze_panes = ws3['A2']
+    ws3.sheet_properties.tabColor = "A9D08E"
+
+    # write column headers
+    for idx, title in enumerate(opportunity_count_sheet_titles):
+        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
+        ws3.cell(row=1, column=idx + 1).value = title
+        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    # all tese cases files names, and line, from each test cases object
+    for xml_project in suite_dat.xml_projects:
+        test_case_objects = xml_project.test_cases
+        for test_case_obj in test_case_objects:
+            file_names_and_line_numbs.append(test_case_obj.tc_file_name)
+
+    # sort the list by file name and then line number
+    file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
+
+    # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
+    file_name_dups = []
+    file_seen = set()
+    previous_file_and_line = []
+
 
     for file_name_and_numb in file_names_and_line_numbs:
 
@@ -576,8 +659,6 @@ def write_opp_counts(suite_dat):
         # else:
         #     file_seen.append(file_name_and_numb)
 
-
-
         row += 1
 
     # deduped based on both file name and line
@@ -589,6 +670,12 @@ def write_opp_counts(suite_dat):
     # for each file check the duplicate list and highlight it if it is a duplicate
     for file_name_and_numb in file_names_and_line_numbs:
         for dup in file_name_dups:
+
+            # if previous_file_and_line == dup:
+            #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
+            #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
+
+
             # if file name is duplicate, highlight it
             if file_name_and_numb[0] == dup:
                 set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
