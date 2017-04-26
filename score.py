@@ -19,6 +19,9 @@ from openpyxl.chart import BarChart, Reference
 
 from openpyxl.formatting.rule import ColorScaleRule
 
+from operator import itemgetter
+
+
 # Global for command line argument
 normalize_juliet_false_scoring = False
 
@@ -57,7 +60,7 @@ def format_workbook():
     ws2.sheet_view.zoomScale = 85
 
     # opp
-    ws3.column_dimensions['A'].width = 100
+    ws3.column_dimensions['A'].width = 179
     ws3.column_dimensions['B'].width = 6
     ws3.column_dimensions['C'].width = 10
     ws3.column_dimensions['D'].width = 11
@@ -489,11 +492,13 @@ def score_xmls(suite_dat):
                                 test_cases.append(filename)
 
                     #############
-                    # self.xml_projects.append(
-                    #     Xml(cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file))
-
+                    # get the test cases list that holds the objects
                     test_case_file = getattr(xml_project, 'test_cases')
-                    test_case_file.append(TestCase(file_path))
+                    # create a new TestCase object for each new test case
+                    # todo: put this back
+                    test_case_file.append(TestCase([file_path, int(line_number)]))
+                    # test_case_file.append(TestCase(file_path))
+                    # add the new TeseCase object to the project list
                     setattr(xml_project, 'test_cases', test_case_file)
                     #############
 
@@ -558,39 +563,68 @@ def write_opp_counts(suite_dat):
 
     ws3.sheet_properties.tabColor = "A9D08E"
 
+    temp = []
+    sorted_list = []
+
     for xml_project in suite_dat.xml_projects:
-        temp = []
-        seen = set()
-
         test_case_objects = getattr(xml_project, 'test_cases')
-
         for test_case_obj in test_case_objects:
-            row += 1
-
-            # write the relative path and file name to ws3
-            ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
-
             temp.append(test_case_obj.tc_file_name)
 
-            # sort by file name so that the duplicates are grouped together
-            test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
+            #sorted_list.append(temp.sort(key=operator.itemgetter(0)))
 
-            # todo: put this in a loop
-            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
-            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
-            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+    # temp.sort(key=sort)
+    sorted_list = sorted(temp, key=operator.itemgetter(0, 1))
 
-        # identify the duplicate file+lineno combos
-        for n in temp:
-            if n in seen:
-                ws3.cell(row=row, column=3).value = n
-                print("duplicate:", n)
-            else:
-                seen.add(n)
+    print(sorted_list)
+    # sorted_list = sorted(test_case_objects, key=lambda x: x.tc_file_name)
 
-        print('done with project:')
+    for item in temp:
+        ws3.cell(row=row + 1, column=1).value = sorted_list[row - 1][0]
+        ws3.cell(row=row + 1, column=2).value = sorted_list[row - 1][1]
+        # ws3.cell(row=row, column=2).number_format = '#,##0'
 
+        row += 1
+
+    # for xml_project in suite_dat.xml_projects:
+    #     test_case_objects = getattr(xml_project, 'test_cases')
+    #     for test_case_obj in test_case_objects:
+    #
+    #         row += 1
+    #
+    #         # todo: sorting is not working as desired
+    #         # sort by file name so that the duplicates are grouped together
+    #         # test_case_objects.sort(key=operator.attrgetter('tc_file_name'))
+    #
+    #
+    #         # write the relative path and file name to ws3
+    #         #ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name
+    #         # ws3.cell(row=row, column=1).value = test_case_obj.tc_file_name[0]
+    #         # ws3.cell(row=row, column=2).value = test_case_obj.tc_file_name[1]
+    #         ws3.cell(row=row, column=1).value = sorted_list[row-2]
+    #         # todo: put this in a loop
+    #         set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
+    #         set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
+    #         ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    #         ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
+
+
+
+    # todo: keep this
+    #  identify the duplicate file+lineno combos
+    # for n in temp:
+    #     if n in seen:
+    #         ws3.cell(row=row, column=3).value = n
+    #         print("duplicate:", n)
+    #     else:
+    #         seen.add(n)
+    #
+    print('done with project:')
+
+
+def sort(v):  # for sorting
+    return v[0], v[1]  # , v[7]
+    #return v[0]
 
 
 def import_xml_tags_ORIGINAL(suite_dat):
@@ -1056,11 +1090,6 @@ def remove_dups(d):
     return new_d
 
 
-def sort(v):  # for sorting
-    # return v[1], v[2], v[7]
-    return v[0]
-
-
 def write_details(data_details):
     #########################################################################################################
     detail_sheet_titles = ['CWE', 'Type', 'T/F', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'RAW Project File']
@@ -1233,12 +1262,18 @@ def write_summary(scan_data):
 
         # todo: format numbers with commas
         ws1.cell(row=row, column=1).value = cwe
-        ws1.cell(row=row, column=2).value = format(tc_t, ",d")
-        ws1.cell(row=row, column=3).value = format(tc_f, ",d")
-        ws1.cell(row=row, column=4).value = format(tp, ",d")
-        ws1.cell(row=row, column=5).value = format(fp, ",d")
-        ws1.cell(row=row, column=7).value = round(recall, 2)
+        ws1.cell(row=row, column=2).value = tc_t
+        ws1.cell(row=row, column=3).value = tc_f
+        ws1.cell(row=row, column=4).value = tp
+        ws1.cell(row=row, column=5).value = fp
+        ws1.cell(row=row, column=7).value = recall
+        #todo: loop this
         ws1.cell(row=row, column=7).number_format = '0.00'
+        ws1.cell(row=row, column=2).number_format = '#,##0'
+        ws1.cell(row=row, column=3).number_format = '#,##0'
+        ws1.cell(row=row, column=4).number_format = '#,##0'
+        ws1.cell(row=row, column=5).number_format = '#,##0'
+
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id):

@@ -18,6 +18,7 @@ class TestCase(object):
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
 
+
         # todo: add more fields
 
 class Xml(object):
