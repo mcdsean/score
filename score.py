@@ -62,7 +62,7 @@ def format_workbook():
     # opp
     ws3.column_dimensions['A'].width = 146
     ws3.column_dimensions['B'].width = 6
-    ws3.column_dimensions['C'].width = 10
+    ws3.column_dimensions['C'].width = 8
     ws3.column_dimensions['D'].width = 11
     ws3.sheet_view.zoomScale = 80
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
@@ -493,6 +493,11 @@ def score_xmls(suite_dat):
                                 test_cases.append(filename)
 
                     #############
+                    # $$$$$$$$$$$$$$$$$$$$$$$
+                    # TODO: NEW CODE-------------------------------------------------------4/26/17
+                    # get_opp_counts_per_test_case(os.path.join(os.getcwd(), 'juliet', os.path.dirname(file_path)))
+
+                    # $$$$$$$$$$$$$$$$$$$$$$$
                     # get the test cases list that holds the objects
                     test_case_file = getattr(xml_project, 'test_cases')
                     # create a new TestCase object for each new test case
@@ -571,7 +576,7 @@ def write_opp_counts(suite_dat):
         row += 1
 
     row = 1
-    # todo: consider de-duplicating all files with matching line numbers
+    # todo: create new function here
     # for each file name check the duplicate list and highlight it if it is a duplicate
     for file_name_and_line in file_names_and_line_numbs:
 
@@ -1077,6 +1082,47 @@ def auto_score_ORIGINAL(xml_path, cwe_no, test_case_type, test_case_t_f):
 
 
 def get_opp_counts_per_test_case(juliet_test_case_path):
+    opp_counts = {}
+
+    # for root, dirs, files in os.walk(juliet_tc_path_f):
+    for root, dirs, files in os.walk(juliet_test_case_path):
+
+        for file in files:
+            opp_count = 0
+            if file.endswith(".c"):
+                with open(os.path.join(root, file), 'r') as inF:
+                    for line in inF:
+                        if 'FIX' in line:
+                            opp_count += 1
+                            # todo: need to get the line number
+
+                            # $$$$$$$$$$$$$$$$$$$
+                            # with open(filename) as myFile:
+                            #     for num, line in enumerate(myFile, 1):
+                            #         if lookup in line:
+                            #             print
+                            #             'found at line:', num
+                            # $$$$$$$$$$$$$$$$$$$$
+
+                # get test case name by removing variant and file extension
+                test_case_name = re.sub("[a-z]?\.\w+$", "", file)
+                test_case_full_path = os.path.join(root, test_case_name)
+
+                # if test case name not in the list, add it
+                if opp_counts.get(test_case_full_path, 'None') == 'None':
+                    opp_counts.update({test_case_full_path: opp_count})
+
+                # if test case name is in the list, add this new value to the existing value
+                else:
+                    current_value = opp_counts[test_case_full_path]
+                    updated_value = opp_count + current_value
+                    opp_counts.update({test_case_full_path: updated_value})
+
+    # return opp counts by test case name
+    return opp_counts  # todo: consider sorting these for speed?
+
+
+def get_opp_counts_per_test_case_ORIGINAL(juliet_test_case_path):
     opp_counts = {}
 
     # for root, dirs, files in os.walk(juliet_tc_path_f):
