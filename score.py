@@ -391,6 +391,7 @@ def get_schemas(suite_dat):
         schema = 'ns1:' + getattr(suite_dat, 'tag_info')[idx][1].replace('/', '/ns1:')
 
         # finding type
+        # todo: simplify these common components by adding function
         if content[0].lower() == 'finding_type':
             if content[2].lower() == 'tag':
                 schemas['finding_type_schema'] = schema
@@ -410,6 +411,14 @@ def get_schemas(suite_dat):
             elif content[2].lower() == 'attribute':
                 schemas['line_number_schema'] = schema.rsplit('/', 1)[0]
                 schemas['line_number_attrib'] = schema.rsplit(':', 1)[1]
+            continue
+        # function name
+        if content[0].lower() == 'function_name':
+            if content[2].lower() == 'tag':
+                schemas['function_name_schema'] = schema
+            elif content[2].lower() == 'attribute':
+                schemas['function_name_schema'] = schema.rsplit('/', 1)[0]
+                schemas['function_name_attrib'] = schema.rsplit(':', 1)[1]
             continue
         # weakness ids
         if 'weakness' in content[0].lower():
@@ -455,6 +464,7 @@ def score_xmls(suite_dat):
             file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
             line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
             filename = os.path.basename(file_path)
+            function_name = vuln.find(schemas['function_name_schema'], ns).attrib[schemas['function_name_attrib']]
 
             # 3. get all pieces of the wid for this row in the xml
             for idx, weakness_id in enumerate(weakness_id_schemas):
@@ -485,12 +495,13 @@ def score_xmls(suite_dat):
 
                         # todo: consider using 'not in' like above, but may want to write all to sheet instead?
                         if test_case_type == 'juliet':
-                            filename = re.sub('[a-z]?\.\w+$', '', filename)
+                            test_case_name = re.sub('[a-z]?\.\w+$', '', filename)
                             test_cases.append(filename)
                         elif test_case_type == 'kdm':
-                            if not filename.endswith(".h") and not filename.endswith("_a.c") and not filename.endswith(
-                                    ".obj") and filename.startswith("SFP"):
-                                test_cases.append(filename)
+                            test_case_name = re.sub('[_a]?\.\w+$', '', filename)
+                        else:
+                            test_case_name = ''
+                        test_cases.append(test_case_name)
 
                     #############
                     # $$$$$$$$$$$$$$$$$$$$$$$
@@ -500,11 +511,8 @@ def score_xmls(suite_dat):
                     # $$$$$$$$$$$$$$$$$$$$$$$
                     # get the test cases list that holds the objects
                     test_case_file = getattr(xml_project, 'test_cases')
-                    # create a new TestCase object for each new test case
-                    # todo: put this back
+                    # if the test case name does not exist yet, create a new 'TestCase' object
                     test_case_file.append(TestCase([file_path, int(line_number)]))
-                    # test_case_file.append(TestCase(file_path))
-                    # add the new TeseCase object to the project list
                     setattr(xml_project, 'test_cases', test_case_file)
                     #############
 

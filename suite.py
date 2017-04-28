@@ -6,7 +6,10 @@ FVDL_NAME = "audit.fvdl"
 
 
 class TestCase(object):
+    # todo: make the argument test case name on creation and then set param for 'the tc_file_name'
     def __init__(self, filename):
+        # test case name
+        self.test_case_name = ''
         # all of the file names within the test case
         self.tc_file_name = filename
         # dublicate test case file names
@@ -19,6 +22,9 @@ class TestCase(object):
         self.opp_blocks = []
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
+        #
+        self.enclosing_function_name = []
+
 
 
 class Xml(object):
