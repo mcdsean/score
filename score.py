@@ -1627,6 +1627,7 @@ def get_used_wids(scan_data):
 
 if __name__ == '__main__':
 
+    # new
     data = []
     juliet_f_counts = []
 

@@ -25,7 +25,7 @@ class TestCase(object):
         #
         self.enclosing_function_name = []
 
-
+        # new
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
