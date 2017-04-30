@@ -4,18 +4,18 @@ import py_common
 
 FVDL_NAME = "audit.fvdl"
 
-
-# 937
 class TestCase(object):
     # todo: make the argument test case name on creation and then set param for 'the tc_file_name'
-    def __init__(self, filename):
+    # def __init__(self, filename):
+    def __init__(self, test_case_name):
         # test case name
-        self.test_case_name = ''
+        self.test_case_name = test_case_name
         # all of the file names within the test case
-        self.tc_file_name = filename
+        # self.tc_file_name = filename
+        self.tc_file_names_and_line_numbs = []  #not used yet
         # dublicate test case file names
         self.duplicate_file_names = []
-        # line number for each 'filename'
+        # line number for each 'filename' # todo: delete this?
         self.line_numbers = []
         # total number of 'FIX' counts (juliet, false only)
         self.opp_counts = 0
@@ -25,8 +25,8 @@ class TestCase(object):
         self.opp_location = 0
         #
         self.enclosing_function_name = []
+        self.hit_data = []
 
-        # new
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
@@ -51,7 +51,8 @@ class Xml(object):
         self.used_wids = []
 
         self.test_case_files_that_hit = []
-        self.test_cases_that_hit = []
+
+
 
         print('PROJECT FILE---', self.scan_data_file)
 

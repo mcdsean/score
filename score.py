@@ -21,7 +21,6 @@ from openpyxl.formatting.rule import ColorScaleRule
 
 from operator import itemgetter
 
-# 937
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
@@ -31,6 +30,8 @@ XML_OUTPUT_DIR = 'xmls'
 WID_DELIMITER_FORTIFY = ':'
 
 def format_workbook():
+    hit_sheet_titles = ['File (Juliet/False)', 'Line #', 'Opp Block', 'Opportunities', ]
+
     '''
     ws1.protect()	
     ws2.protect()	
@@ -55,18 +56,27 @@ def format_workbook():
     ws2.column_dimensions['D'].width = 5
     ws2.column_dimensions['E'].width = 6
     ws2.column_dimensions['F'].width = 5
-    ws2.column_dimensions['G'].width = 40
+    ws2.column_dimensions['G'].width = 43
     ws2.column_dimensions['H'].width = 62
     ws2.column_dimensions['I'].width = 105
     ws2.sheet_view.zoomScale = 85
 
-    # opp
+    # hit data
     ws3.column_dimensions['A'].width = 146
     ws3.column_dimensions['B'].width = 6
-    ws3.column_dimensions['C'].width = 8
+    ws3.column_dimensions['C'].width = 86
     ws3.column_dimensions['D'].width = 11
     ws3.sheet_view.zoomScale = 80
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    # freeze first row and column
+    ws3.freeze_panes = ws3['A2']
+    ws3.sheet_properties.tabColor = "A9D08E"
+    # write column headers
+    for idx, title in enumerate(hit_sheet_titles):
+        set_appearance(ws3, 1, idx + 1, 'fg_fill', 'A9D08E')
+        ws3.cell(row=1, column=idx + 1).value = title
+        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
 
 
 def count_kdm_test_cases(fpr_name):
@@ -428,7 +438,7 @@ def get_schemas(suite_dat):
     return schemas, weakness_id_schemas
 
 
-def score_xmls(suite_dat):
+def score_xmls_1(suite_dat):
     ns = {}
     wid_pieces_that_hit = []
 
@@ -461,7 +471,7 @@ def score_xmls(suite_dat):
             #todo: add condition for tag vs attribute; need flags in switch statement above
             del wid_pieces_that_hit[:]
 
-            # 2. get path(filename) and line number for this row in this xml
+            # 2. get relative path/filename and line number for this row in this xml
             file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
             line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
             filename = os.path.basename(file_path)
@@ -495,9 +505,10 @@ def score_xmls(suite_dat):
                         test_case_files.append([filename, line_number])
 
                         # todo: consider using 'not in' like above, but may want to write all to sheet instead?
+                        # juliet test case
                         if test_case_type == 'juliet':
                             test_case_name = re.sub('[a-z]?\.\w+$', '', filename)
-                            test_cases.append(filename)
+                        # kdm test case
                         elif test_case_type == 'kdm':
                             test_case_name = re.sub('[_a]?\.\w+$', '', filename)
                         else:
@@ -505,7 +516,7 @@ def score_xmls(suite_dat):
                         test_cases.append(test_case_name)
 
                     #############
-                    # $$$$$$$$$$$$$$$$$$$$$$$
+
                     # TODO: NEW CODE-------------------------------------------------------4/26/17
                     # get_opp_counts_per_test_case(os.path.join(os.getcwd(), 'juliet', os.path.dirname(file_path)))
 
@@ -526,11 +537,213 @@ def score_xmls(suite_dat):
         print('SCORE:', score)
         setattr(xml_project, 'num_of_hits', score)
         setattr(xml_project, 'used_wids', used_wids)
-        setattr(xml_project, 'test_cases_that_hit', test_cases)
-        setattr(xml_project, 'test_case_files_that_hit', test_case_files)
+        setattr(xml_project, 'test_case_files_that_hit', file_path)
+        setattr(xml_project, 'test_case_files_and_line_that_hit', test_case_files)
 
 
-def write_opp_counts(suite_dat):
+def score_xmls(suite_dat):
+    ns = {}
+    wid_pieces_that_hit = []
+    row = 1
+
+    schemas, weakness_id_schemas = get_schemas(suite_dat)
+
+    for xml_project in suite_data.xml_projects:
+
+        used_wids = []
+        test_cases = []
+        test_case_files = []
+        file_paths = []
+
+        # read namespace from the first xml since it will be the same for all other xmls
+        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
+
+        setattr(suite_dat, 'name_space', ns)  # todo: we only need this one time
+
+        print('XML', xml_path)
+
+        # get the acceptable wids for this xml
+        good_wids = getattr(xml_project, 'acceptable_weakness_ids')
+        test_case_type = getattr(xml_project, 'tc_type')
+        tool_name = getattr(suite_data, 'tool_name')
+
+        # 1. parse thru each row in this xml looking for good wids, and get the filename & line #
+        # for vuln in root.findall('./' + finding_type_schema, ns):
+        for vuln in root.findall('./' + schemas['finding_type_schema'], ns):
+
+            # todo: add condition for tag vs attribute; need flags in switch statement above
+            del wid_pieces_that_hit[:]
+
+            # 2. get relative path/filename and line number for this row in this xml
+            file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
+            line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
+            function_name = vuln.find(schemas['function_name_schema'], ns).attrib[schemas['function_name_attrib']]
+
+            # 3. get all pieces of the wid for this row in the xml
+            for idx, weakness_id in enumerate(weakness_id_schemas):
+                wid_piece = vuln.find(weakness_id_schemas[idx], ns)
+                if wid_piece is not None:
+                    wid_pieces_that_hit.append(wid_piece.text)
+
+            # 4. look at each non-empty cell in the spreadsheet for acceptable wids
+            for good_wid in good_wids:
+                if tool_name == 'fortify':
+                    good_wid_pieces = good_wid.split(WID_DELIMITER_FORTIFY)
+                else:
+                    good_wid_pieces = good_wid
+
+                # 5. if the current cell in spreadsheet does not contain a cwe # or is blank, move on
+                if good_wid != 'None' and not good_wid.isdigit():
+
+                    # 6. see if ALL of the pieces for this row match this cell's good wid
+                    if set(wid_pieces_that_hit) != set(good_wid_pieces):
+                        continue
+
+                    else:
+                        # this is a good wid so add it to the list if it is not already there
+                        if good_wid not in used_wids:
+                            used_wids.append(good_wid)
+
+                        test_case_files.append([file_path, int(line_number)])
+
+                        if test_case_type == 'juliet':
+                            test_case_name = re.sub('[a-z]?\.\w+$', '', file_path)
+                        elif test_case_type == 'kdm':
+                            test_case_name = re.sub('[_a]?\.\w+$', '', file_path)
+                        else:
+                            test_case_name = ''
+                        test_cases.append(test_case_name)
+                        file_paths.append(file_path)
+
+                        #############++++++++++++++++++++++++++++++++
+                        # todo: get_opp_counts_per_test_case(os.path.join(os.getcwd(), 'juliet', os.path.dirname(file_path)))
+
+                        # ws3.cell(row=row + 1, column=1).value = file_path
+                        # ws3.cell(row=row + 1, column=2).value = line_number
+                        # row += 1
+
+                        # get the test cases list that holds the objects
+                        test_case_objects = getattr(xml_project, 'test_cases')
+
+                        # if this is a new test case name, create a new object for it
+                        if test_case_name not in test_case_objects:
+                            # create a new test case object
+                            test_case_objects.append(TestCase(test_case_name))
+                            # add the new test case object to the xml project list
+                            setattr(xml_project, 'test_cases', test_case_objects)
+                            test_case_objects[0].hit_data.append([file_path, line_number, function_name])
+
+                        # the test case object now exists so find the correct name and update its hit list
+                        else:
+                            for test_case_object in test_case_objects:
+                                if test_case_object.test_case_name == test_case_name:
+                                    # test_case_object.function_name = function_name
+                                    # setattr(test_case_object, 'enclosing_function_name', function_name)
+                                    hit_data = getattr(test_case_object, 'hit_data')
+                                    hit_data.append([file_path, line_number, function_name])
+
+                                    #############++++++++++++++++++++++++++++++++
+
+                # empty acceptable wid cell on spreadsheet so move on #todo: possibly break or continue to speed up?
+                else:
+                    continue
+
+        score = len(set(test_cases))
+
+        print('SCORE:', score)
+        setattr(xml_project, 'num_of_hits', score)
+        setattr(xml_project, 'used_wids', used_wids)
+        setattr(xml_project, 'test_case_files_that_hit', file_paths)
+
+
+def collect_hit_data(suite_dat):
+    # file name, line number, and enclosing function of all hits
+    hit_data = []
+
+    # all test case files names, and line, from each test cases object
+    for xml_project in suite_dat.xml_projects:
+        test_case_objects = xml_project.test_cases
+        for test_case_obj in test_case_objects:
+            hit_data += test_case_obj.hit_data
+
+    # sort the hits by file name and then line number
+    hit_data = sorted(hit_data, key=operator.itemgetter(0, 1))
+
+    write_hit_data(hit_data)
+
+
+def write_hit_data(hit_data):
+    row = 1
+
+    file_name_dups = []
+    file_seen = set()
+    previous_file_name_and_line = []
+
+    for hit in hit_data:
+
+        # write the file name and line for each hit
+        ws3.cell(row=row + 1, column=1).value = hit[0]  # file name
+        ws3.cell(row=row + 1, column=2).value = hit[1]  # line number
+        ws3.cell(row=row + 1, column=3).value = hit[2]  # function name
+        # set appearance and alignment
+        # todo: consider doing this all at once at the end to speed up?
+        # todo: put this in a loop to cover all columns which is not determined yet
+        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
+        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
+        set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFFFFF')
+        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
+        ws3.cell(row=row + 1, column=3).alignment = Alignment(horizontal="right")
+
+        # todo: move this to score_xmls...THIS WORKS
+        # identify the duplicate files only
+        if hit[0] in file_seen:
+            file_name_dups.append(hit[0])
+            ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
+        else:
+            file_seen.add(hit[0])
+
+        row += 1
+
+    row = 1
+    # todo: create new function here
+    # for each file name check the duplicate list and highlight it if it is a duplicate
+
+
+    for hit in hit_data:
+
+        for dup_file_name in file_name_dups:
+
+            # if file name is a duplicate, highlight it's row
+            if hit[0] == dup_file_name:
+
+                temp = list(hit[:2])
+                if previous_file_name_and_line == list(hit[:2]):
+                    # todo: put in loop to cove all cols
+                    # todo: write this info to the test case object
+                    #  gray - file name an line combo are not unique if
+                    #  previous sorted value is identical to this sample
+                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 3, 'fg_fill', 'D9D9D9')
+                    # adjust previous row
+                    set_appearance(ws3, row, 1, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 2, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 3, 'fg_fill', 'D9D9D9')
+
+                else:
+                    # red - unique file name and line number
+                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFC7CE')
+                previous_file_name_and_line = list(hit[:2])
+
+        row += 1
+
+
+def write_opp_counts_2(suite_dat):
 
     ##############################################################################################################
     opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
@@ -549,20 +762,35 @@ def write_opp_counts(suite_dat):
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
-    # all tese cases files names, and line, from each test cases object
+    # all test case files names, and line, from each test cases object
+    for xml_project in suite_dat.xml_projects:
+        # file_names_and_line_numbs.append(xml_project.test_case_files_and_line_that_hit)
+        file_names_and_line_numbs += xml_project.test_case_files_and_line_that_hit
+
+        test_case_objects = xml_project.test_cases
+
+
+        for test_case_obj in test_case_objects:
+            row += 1
+            # ws3.cell(row=row, column=3).value = test_case_obj.enclosing_function_name
+            ws3.cell(row=row, column=3).value = getattr(test_case_obj, 'enclosing_function_name')
+
+    '''
+    # all test case files names, and line, from each test cases object
     for xml_project in suite_dat.xml_projects:
         test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
-            file_names_and_line_numbs.append(test_case_obj.tc_file_name)
+            file_names_and_line_numbs.append(test_case_obj.test_case_name)
+    '''
 
     # sort the list by file name and then line number
     file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
 
-    # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
+    # todo: put this and associated code into test case object 'duplicate_file_names' in score_xmls
     file_name_dups = []
     file_seen = set()
     previous_file_name_and_line = []
-
+    row = 1
     for file_name_and_line in file_names_and_line_numbs:
 
         # write the file name and line for each hit
@@ -578,7 +806,7 @@ def write_opp_counts(suite_dat):
         # identify the duplicate files only
         if file_name_and_line[0] in file_seen:
             file_name_dups.append(file_name_and_line[0])
-            ws3.cell(row=row, column=3).value = file_name_and_line[0]  # todo: DEBUG code, delete when thru
+            #ws3.cell(row=row, column=3).value = file_name_and_line[0]  # todo: DEBUG code, delete when thru
         else:
             file_seen.add(file_name_and_line[0])
 
@@ -918,7 +1146,7 @@ def auto_score(suite_dat):
         print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
         op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
 
-    write_opp_counts(op_sheet_list)
+    collect_hit_data(op_sheet_list)
    '''
 
     # get the unique hits for each file variant
@@ -1075,7 +1303,7 @@ def auto_score_ORIGINAL(xml_path, cwe_no, test_case_type, test_case_t_f):
         print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
         op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
 
-    write_opp_counts(op_sheet_list)
+    collect_hit_data(op_sheet_list)
    '''
 
     # get the unique hits for each file variant
@@ -1461,64 +1689,23 @@ def create_summary_chart():
     ws1.add_chart(chart1, 'H2')
 
 
-def write_opp_counts_ORIGINAL(suite_dat):
-    row = 1
-
-    ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
-    ##############################################################################################################
-
-    # perform multi-column sorts
-    # scan_data.sort(key=sort)
-
-    # freeze first row and column
-    ws3.freeze_panes = ws3['A2']
-
-    # write column headers
-    for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
-        ws3.cell(row=1, column=idx + 1).value = title
-        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    for xml_project in suite_dat.xml_projects:
-
-        test_case_files_that_hit = getattr(xml_project, 'test_case_files_that_hit')
-
-        # write data to sheets
-        for file in test_case_files_that_hit:
-            row += 1
-
-            # ws3.cell(row=idx2+2, column=1).value = file_name[0]
-            ws3.cell(row=row, column=1).value = file[0]
-            ws3.cell(row=row, column=2).value = file[1]
-            # todo: put this in a loop
-            set_appearance(ws3, row, 1, 'fg_fill', 'FFFFFF')
-            set_appearance(ws3, row, 2, 'fg_fill', 'FFFFFF')
-            ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-            ws3.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-
-    print('DONE', row)
-
-
 def write_opp_counts_to_sheet(suite_dat):
-    test_case_files_that_hit = []
+    test_case_files_and_line_that_hit = []
 
     for xml_project in suite_dat.xml_projects:
-        test_case_files_that_hit.append(getattr(xml_project, 'test_case_files_that_hit'))
+        test_case_files_and_line_that_hit.append(getattr(xml_project, 'test_case_files_and_line_that_hit'))
 
 
-        # for idx, file in enumerate(test_case_files_that_hit):
+        # for idx, file in enumerate(test_case_files_and_line_that_hit):
         #     # file_name = str(file[0])
         #     # line_no = str(file[1])
         #
         #     file_name = file[idx][0]
         #     line_no = file[idx][1]
         #
-        #     test_case_files_that_hit.append([file_name, line_no])
+        #     test_case_files_and_line_that_hit.append([file_name, line_no])
 
-    write_opp_counts(test_case_files_that_hit)
+    collect_hit_data(test_case_files_and_line_that_hit)
 
 
 def write_opp_counts_to_sheet_ORIGINAL(juliet_f_hits):
@@ -1530,7 +1717,7 @@ def write_opp_counts_to_sheet_ORIGINAL(juliet_f_hits):
 
         op_sheet_list.append([file_name, line_no])
 
-    write_opp_counts(op_sheet_list)
+    collect_hit_data(op_sheet_list)
 
 
 def dedup_multi_dim_list(mylist):
@@ -1628,7 +1815,6 @@ def get_used_wids(scan_data):
 
 if __name__ == '__main__':
 
-    # new
     data = []
     juliet_f_counts = []
 
@@ -1683,7 +1869,7 @@ if __name__ == '__main__':
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
-    write_opp_counts(suite_data)
+    collect_hit_data(suite_data)
 
     wb.active = 0
     wb.save(scorecard)
