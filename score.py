@@ -66,7 +66,7 @@ def format_workbook():
     ws3.column_dimensions['B'].width = 6
     ws3.column_dimensions['C'].width = 86
     ws3.column_dimensions['D'].width = 11
-    ws3.sheet_view.zoomScale = 80
+    ws3.sheet_view.zoomScale = 70
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
@@ -624,6 +624,12 @@ def score_xmls(suite_dat):
                         # ws3.cell(row=row + 1, column=1).value = file_path
                         # ws3.cell(row=row + 1, column=2).value = line_number
                         # row += 1
+
+                        # &&&&&&&&&&&&&&&&&&&&&&
+                        # temp = file_path.rsplit('/', 1)[0]
+                        # get_opp_counts_per_file(os.path.join(os.getcwd(), 'juliet', temp))
+
+                        # &&&&&&&&&&&&&&&&&&&&&&
 
                         # get the test cases list that holds the objects
                         test_case_objects = getattr(xml_project, 'test_cases')
@@ -1401,13 +1407,16 @@ def get_opp_counts_per_file(file_path):
             if file.endswith(".c"):
                 with open(root + "\\" + file, 'r') as inF:
                     for line in inF:
-                        if 'FIX' in line:
+                        # if 'FIX' in line:
+                        # if line.lstrip().startswith('good') and line.endswith(''):
+                        if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
                             opp_count += 1
-
+                            print('LINE============', line, 'in=======', file)
+                            # todo: this works. do it for only files that hit?
                 # test_case_name = re.sub("[a-z]?\.\w+$", "", file)
 
                 # testcase name and opp count to list or update if already there
-                if (opp_counts.get(file, 'None') == 'None'):
+                if opp_counts.get(file, 'None') == 'None':
                     opp_counts.update({file: opp_count})
                 else:
                     current_value = opp_counts[file]
