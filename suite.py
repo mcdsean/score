@@ -53,7 +53,7 @@ class TestCase(object):
                                 # if 'FIX' in line:
                                 if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
                                     opp_count += 1
-                                    self.opp_names.append(line.strip())
+                                    self.opp_names.append(line.strip()[:-3])
                                     self.opp_count = opp_count
                         ''' 
                         stop searching the files associated wtih this test case since the opp info has been 
@@ -66,34 +66,6 @@ class TestCase(object):
             self.opp_count = 1
             self.opp_names.append('N/A')
 
-            '''
-            opp_counts = {}
-    
-            for file in files:
-                opp_count = 0
-                if file.endswith(".c"):
-                    with open(root + "\\" + file, 'r') as inF:
-                        for line in inF:
-                            # if 'FIX' in line:
-                            # if line.lstrip().startswith('good') and line.endswith(''):
-                            if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
-                                opp_count += 1
-                                print('LINE============', line, 'in=======', file)
-                                # todo: this works. do it for only files that hit
-                    # test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-    
-                    # testcase name and opp count to list or update if already there
-                    if opp_counts.get(file, 'None') == 'None':
-                        opp_counts.update({file: opp_count})
-                    else:
-                        current_value = opp_counts[file]
-                        updated_value = opp_count + current_value
-                        opp_counts.update({file: updated_value})
-                        # print("updated_value", file, updated_value)
-        
-            # return opp counts by test case name
-            return opp_counts  # consider sorting these for speed?
-            '''
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
@@ -105,19 +77,16 @@ class Xml(object):
         self.new_xml_name = new_xml_name
         self.scan_data_file = scan_data_file
 
-        # list of test case objects
-        self.test_cases = []
-
         # runtime attributes
         self.tc_count = ''
         self.num_of_hits = ''
         self.percent_hits = ''
         self.tc_path = ''
-
         self.acceptable_weakness_ids = []
         self.used_wids = []
-
         self.test_case_files_that_hit = []
+        # list of test case objects
+        self.test_cases = []
 
         print('PROJECT FILE---', self.scan_data_file)
 

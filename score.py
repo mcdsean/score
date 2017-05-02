@@ -30,7 +30,7 @@ XML_OUTPUT_DIR = 'xmls'
 WID_DELIMITER_FORTIFY = ':'
 
 def format_workbook():
-    hit_sheet_titles = ['File (Juliet/False)', 'Line #', 'Opp Block', 'Opportunities', ]
+    hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'Hits', 'Opportunities']
 
     '''
     ws1.protect()	
@@ -62,10 +62,17 @@ def format_workbook():
     ws2.sheet_view.zoomScale = 80
 
     # hit data
-    ws3.column_dimensions['A'].width = 114
+    ws3.column_dimensions['A'].width = 8
     ws3.column_dimensions['B'].width = 6
-    ws3.column_dimensions['C'].width = 80
-    ws3.column_dimensions['D'].width = 11
+    ws3.column_dimensions['C'].width = 6
+    ws3.column_dimensions['D'].width = 108
+    ws3.column_dimensions['E'].width = 6
+    ws3.column_dimensions['F'].width = 75
+    ws3.column_dimensions['G'].width = 6
+    ws3.column_dimensions['H'].width = 12
+    ws3.column_dimensions['I'].width = 12
+    ws3.column_dimensions['J'].width = 12
+    ws3.column_dimensions['K'].width = 12
     ws3.sheet_view.zoomScale = 70
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     # freeze first row and column
@@ -76,6 +83,7 @@ def format_workbook():
         set_appearance(ws3, 1, idx + 1, 'fg_fill', 'A9D08E')
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
 
 
 def count_kdm_test_cases(fpr_name):
@@ -662,14 +670,15 @@ def collect_hit_data(suite_dat):
         test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
 
+            # build the columns for ws3
             for data1 in test_case_obj.hit_data:
-                temp = [str(test_case_obj.opp_count)]
+                temp = [xml_project.cwe_id_padded] + [xml_project.tc_type] + \
+                       [xml_project.true_false] + data1 + [str(test_case_obj.opp_count)]
                 temp.extend(test_case_obj.opp_names)
-                data1.extend(temp)
-                hit_data.append(data1)
+                hit_data.append(temp)
 
     # sort the hits by file name and then line number
-    hit_data = sorted(hit_data, key=operator.itemgetter(0, 1))
+    hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
     write_hit_data(hit_data)
 
@@ -681,32 +690,36 @@ def write_hit_data(hit_data):
     file_seen = set()
     previous_file_name_and_line = []
 
+    hor_left = [4, 6]
+
     for hit in hit_data:
 
-        col = 0
+        col = 1
+
         # write row data for each 'qualified' hit
         for cell in hit:
-            print('cell_data', cell)
-            ws3.cell(row=row + 1, column=col + 1).value = cell
-            col += 1
+            ws3.cell(row=row + 1, column=col).value = cell
 
-        # set appearance and alignment
-        # todo: consider doing this all at once at the end to speed up?
-        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
-        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
-        set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFFFFF')
-        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
-        ws3.cell(row=row + 1, column=3).alignment = Alignment(horizontal="right")
+            if col in hor_left:
+                ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
+            else:
+                ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="center", vertical='center')
+
+            # put border around all cells that are written to
+            set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')
+
+            col += 1
 
         # todo: move this to score_xmls? ...THIS WORKS
         # identify the duplicate files only
-        if hit[0] in file_seen:
-            file_name_dups.append(hit[0])
+        if hit[3] in file_seen:
+            file_name_dups.append(hit[3])
             #ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
         else:
-            file_seen.add(hit[0])
+            file_seen.add(hit[3])
 
         row += 1
+
 
     row = 1
     # todo: create new function here
@@ -717,31 +730,59 @@ def write_hit_data(hit_data):
         for dup_file_name in file_name_dups:
 
             # if file name is a duplicate, highlight it's row
-            if hit[0] == dup_file_name:
+            if hit[3] == dup_file_name:
 
-                temp = list(hit[:2])
-                if previous_file_name_and_line == list(hit[:2]):
-                    # todo: put in loop to cove all cols
-                    # todo: write this info to the test case object
+                # if previous_file_name_and_line == list(hit[:2]):
+                if previous_file_name_and_line == list(hit[3:5]):
+                    # todo: put this in a loop like above
                     #  gray - file name an line combo are not unique if
                     #  previous sorted value is identical to this sample
                     set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
                     set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
                     set_appearance(ws3, row + 1, 3, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 4, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 5, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 6, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 7, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 8, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 9, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 10, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row + 1, 11, 'fg_fill', 'D9D9D9')
                     # adjust previous row
                     set_appearance(ws3, row, 1, 'fg_fill', 'D9D9D9')
                     set_appearance(ws3, row, 2, 'fg_fill', 'D9D9D9')
                     set_appearance(ws3, row, 3, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 4, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 5, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 6, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 7, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 8, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 9, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 10, 'fg_fill', 'D9D9D9')
+                    set_appearance(ws3, row, 11, 'fg_fill', 'D9D9D9')
 
                 else:
                     # red - unique file name and line number
                     set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
                     set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
                     set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFC7CE')
-                previous_file_name_and_line = list(hit[:2])
+                    set_appearance(ws3, row + 1, 4, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 5, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 6, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 7, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 8, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 9, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 10, 'fg_fill', 'FFC7CE')
+                    set_appearance(ws3, row + 1, 11, 'fg_fill', 'FFC7CE')
+
+                previous_file_name_and_line = list(hit[3:5])
+
+                # todo: do this after all cells have been written to or else get an Excel ERROR!
+                # todo: only do this for juliet, false?
+                # todo: this currently does not work (at least at this location)
+                #ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
 
         row += 1
-
 
 def write_opp_counts_2(suite_dat):
 
@@ -1873,6 +1914,18 @@ if __name__ == '__main__':
     write_summary(suite_data)
     create_summary_chart()
     collect_hit_data(suite_data)
+
+    # todo: temp hack, ok to delete once implemented globally 5/2/17
+    ws3.merge_cells(start_row=6, start_column=7, end_row=7, end_column=7)
+    ws3.merge_cells(start_row=6, start_column=8, end_row=7, end_column=8)
+    ws3.merge_cells(start_row=6, start_column=9, end_row=7, end_column=9)
+    ws3.cell(row=6, column=7).alignment = Alignment(vertical="center", horizontal='center')
+    ws3.cell(row=6, column=8).alignment = Alignment(vertical="center", horizontal='center')
+    ws3.cell(row=6, column=9).alignment = Alignment(vertical="center", horizontal='center')
+    set_appearance(ws3, 7, 7, 'fg_fill', 'FFC7CE')
+    set_appearance(ws3, 7, 8, 'fg_fill', 'FFC7CE')
+    set_appearance(ws3, 7, 9, 'fg_fill', 'FFC7CE')
+    #ws3.cell(row=2, column=7).alignment = Alignment(horizontal="right", vertical='center')
 
     wb.active = 0
     wb.save(scorecard)
