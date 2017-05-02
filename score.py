@@ -662,16 +662,11 @@ def collect_hit_data(suite_dat):
         test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
 
-            # hit_data += test_case_obj.hit_data #todo: note, this works too
-            # hit_data.extend(test_case_obj.hit_data) #todo: keep this works
-
-
             for data1 in test_case_obj.hit_data:
                 temp = [str(test_case_obj.opp_count)]
                 temp.extend(test_case_obj.opp_names)
                 data1.extend(temp)
                 hit_data.append(data1)
-
 
     # sort the hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(0, 1))
@@ -680,23 +675,16 @@ def collect_hit_data(suite_dat):
 
 
 def write_hit_data(hit_data):
-    row = 1
 
+    row = 1
     file_name_dups = []
     file_seen = set()
     previous_file_name_and_line = []
 
     for hit in hit_data:
 
-        '''
-        # write the file name and line for each hit
-        ws3.cell(row=row + 1, column=1).value = hit[0]  # file name
-        ws3.cell(row=row + 1, column=2).value = hit[1]  # line number
-        ws3.cell(row=row + 1, column=3).value = hit[2]  # function name
-        ws3.cell(row=row + 1, column=4).value = hit[3]  # opp count
-        ws3.cell(row=row + 1, column=5).value = hit[4]  # all opp names
-        '''
         col = 0
+        # write row data for each 'qualified' hit
         for cell in hit:
             print('cell_data', cell)
             ws3.cell(row=row + 1, column=col + 1).value = cell
@@ -704,14 +692,13 @@ def write_hit_data(hit_data):
 
         # set appearance and alignment
         # todo: consider doing this all at once at the end to speed up?
-        # todo: put this in a loop to cover all columns which is not determined yet
         set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
         set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
         set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFFFFF')
         ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
         ws3.cell(row=row + 1, column=3).alignment = Alignment(horizontal="right")
 
-        # todo: move this to score_xmls...THIS WORKS
+        # todo: move this to score_xmls? ...THIS WORKS
         # identify the duplicate files only
         if hit[0] in file_seen:
             file_name_dups.append(hit[0])
@@ -724,7 +711,6 @@ def write_hit_data(hit_data):
     row = 1
     # todo: create new function here
     # for each file name check the duplicate list and highlight it if it is a duplicate
-
 
     for hit in hit_data:
 
