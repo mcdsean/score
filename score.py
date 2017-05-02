@@ -688,12 +688,20 @@ def write_hit_data(hit_data):
 
     for hit in hit_data:
 
+        '''
         # write the file name and line for each hit
         ws3.cell(row=row + 1, column=1).value = hit[0]  # file name
         ws3.cell(row=row + 1, column=2).value = hit[1]  # line number
         ws3.cell(row=row + 1, column=3).value = hit[2]  # function name
         ws3.cell(row=row + 1, column=4).value = hit[3]  # opp count
         ws3.cell(row=row + 1, column=5).value = hit[4]  # all opp names
+        '''
+        col = 0
+        for cell in hit:
+            print('cell_data', cell)
+            ws3.cell(row=row + 1, column=col + 1).value = cell
+            col += 1
+
         # set appearance and alignment
         # todo: consider doing this all at once at the end to speed up?
         # todo: put this in a loop to cover all columns which is not determined yet
