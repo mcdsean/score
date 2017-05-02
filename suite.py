@@ -7,26 +7,94 @@ FVDL_NAME = "audit.fvdl"
 class TestCase(object):
     # todo: make the argument test case name on creation and then set param for 'the tc_file_name'
     # def __init__(self, filename):
-    def __init__(self, test_case_name):
+    def __init__(self, test_case_name, tc_type, true_false):
         # test case name
         self.test_case_name = test_case_name
         # all of the file names within the test case
         # self.tc_file_name = filename
-        self.tc_file_names_and_line_numbs = []  #not used yet
         # dublicate test case file names
         self.duplicate_file_names = []
         # line number for each 'filename' # todo: delete this?
         self.line_numbers = []
         # total number of 'FIX' counts (juliet, false only)
-        self.opp_counts = 0
+        self.opp_names = []
+        self.opp_count = 0
         # line numbers for start and end of each acceptable opp boundary
         self.opp_blocks = []
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
         #
         self.enclosing_function_name = []
+
+        self.tc_type = tc_type
+        self.true_false = true_false
+
+
         self.hit_data = []
 
+        # auto-run method on creation
+        self.get_juliet_false_opp_counts_per_test_case(self.test_case_name)
+
+    def get_juliet_false_opp_counts_per_test_case(self, test_case_name):
+
+        # this method only applies to juliet/false test cases
+        if self.tc_type == 'juliet' and self.true_false == 'FALSE':
+
+            test_case_dir = os.path.join(os.getcwd(), 'juliet', test_case_name.rsplit('/', 1)[0])
+
+            # walk thru the test case dir associated with this test case and look for the file(s) in this test case
+            for root, dirs, files in os.walk(test_case_dir):
+                for file in files:
+                    opp_count = 0
+                    # get file(s) associated with this test case and find opps
+                    if file.startswith(test_case_name.rsplit('/', 1)[1]) and file.endswith('.c'):
+                        # read thru the entire test case file and look for 'good...()' function calls (i.e. opportunities)
+                        with open(root + "\\" + file, 'r') as inF:
+                            for line in inF:
+                                # if 'FIX' in line:
+                                if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
+                                    opp_count += 1
+                                    self.opp_names.append(line.strip())
+                                    self.opp_count = opp_count
+                        ''' 
+                        stop searching the files associated wtih this test case since the opp info has been 
+                        found and it only occurs in one file 
+                        '''
+                        if opp_count != 0:
+                            break
+
+        else:
+            self.opp_count = 1
+            self.opp_names.append('N/A')
+
+            '''
+            opp_counts = {}
+    
+            for file in files:
+                opp_count = 0
+                if file.endswith(".c"):
+                    with open(root + "\\" + file, 'r') as inF:
+                        for line in inF:
+                            # if 'FIX' in line:
+                            # if line.lstrip().startswith('good') and line.endswith(''):
+                            if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
+                                opp_count += 1
+                                print('LINE============', line, 'in=======', file)
+                                # todo: this works. do it for only files that hit
+                    # test_case_name = re.sub("[a-z]?\.\w+$", "", file)
+    
+                    # testcase name and opp count to list or update if already there
+                    if opp_counts.get(file, 'None') == 'None':
+                        opp_counts.update({file: opp_count})
+                    else:
+                        current_value = opp_counts[file]
+                        updated_value = opp_count + current_value
+                        opp_counts.update({file: updated_value})
+                        # print("updated_value", file, updated_value)
+        
+            # return opp counts by test case name
+            return opp_counts  # consider sorting these for speed?
+            '''
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
@@ -52,10 +120,7 @@ class Xml(object):
 
         self.test_case_files_that_hit = []
 
-
-
         print('PROJECT FILE---', self.scan_data_file)
-
 
 class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):

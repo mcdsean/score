@@ -59,12 +59,12 @@ def format_workbook():
     ws2.column_dimensions['G'].width = 43
     ws2.column_dimensions['H'].width = 62
     ws2.column_dimensions['I'].width = 105
-    ws2.sheet_view.zoomScale = 85
+    ws2.sheet_view.zoomScale = 80
 
     # hit data
-    ws3.column_dimensions['A'].width = 146
+    ws3.column_dimensions['A'].width = 114
     ws3.column_dimensions['B'].width = 6
-    ws3.column_dimensions['C'].width = 86
+    ws3.column_dimensions['C'].width = 80
     ws3.column_dimensions['D'].width = 11
     ws3.sheet_view.zoomScale = 70
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
@@ -76,7 +76,6 @@ def format_workbook():
         set_appearance(ws3, 1, idx + 1, 'fg_fill', 'A9D08E')
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
 
 
 def count_kdm_test_cases(fpr_name):
@@ -626,8 +625,7 @@ def score_xmls(suite_dat):
                         # row += 1
 
                         # &&&&&&&&&&&&&&&&&&&&&&
-                        # temp = file_path.rsplit('/', 1)[0]
-                        # get_opp_counts_per_file(os.path.join(os.getcwd(), 'juliet', temp))
+                        # get_opp_counts_per_file(os.path.join(os.getcwd(), 'juliet', file_path.rsplit('/', 1)[0]))
 
                         # &&&&&&&&&&&&&&&&&&&&&&
 
@@ -637,13 +635,15 @@ def score_xmls(suite_dat):
                         # if this is a new test case name, create a new object for it
                         if test_case_name not in test_case_objects:
                             # create a new test case object
-                            test_case_objects.append(TestCase(test_case_name))
+                            # test_case_objects.append(TestCase(test_case_name))
+                            test_case_objects.append(
+                                TestCase(test_case_name, xml_project.tc_type, xml_project.true_false))
                             # add the new test case object to the xml project list
                             setattr(xml_project, 'test_cases', test_case_objects)
                             test_case_objects[0].hit_data.append([file_path, line_number, function_name])
 
                         # the test case object now exists so find the correct name and update its hit list
-                        else:
+                        else:  # TODO: THIS IS USELESS ... NEVER HITS IN HERE... LOOK AT THIS?
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
                                     # test_case_object.function_name = function_name
