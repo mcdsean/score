@@ -661,8 +661,17 @@ def collect_hit_data(suite_dat):
     for xml_project in suite_dat.xml_projects:
         test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
-            # hit_data += test_case_obj.hit_data
-            hit_data.extend(test_case_obj.hit_data)
+
+            # hit_data += test_case_obj.hit_data #todo: note, this works too
+            # hit_data.extend(test_case_obj.hit_data) #todo: keep this works
+
+
+            for data1 in test_case_obj.hit_data:
+                temp = [str(test_case_obj.opp_count)]
+                temp.extend(test_case_obj.opp_names)
+                data1.extend(temp)
+                hit_data.append(data1)
+
 
     # sort the hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(0, 1))
@@ -683,6 +692,8 @@ def write_hit_data(hit_data):
         ws3.cell(row=row + 1, column=1).value = hit[0]  # file name
         ws3.cell(row=row + 1, column=2).value = hit[1]  # line number
         ws3.cell(row=row + 1, column=3).value = hit[2]  # function name
+        ws3.cell(row=row + 1, column=4).value = hit[3]  # opp count
+        ws3.cell(row=row + 1, column=5).value = hit[4]  # all opp names
         # set appearance and alignment
         # todo: consider doing this all at once at the end to speed up?
         # todo: put this in a loop to cover all columns which is not determined yet
@@ -696,7 +707,7 @@ def write_hit_data(hit_data):
         # identify the duplicate files only
         if hit[0] in file_seen:
             file_name_dups.append(hit[0])
-            ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
+            #ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
         else:
             file_seen.add(hit[0])
 
