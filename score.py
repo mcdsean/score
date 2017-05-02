@@ -545,6 +545,8 @@ def score_xmls(suite_dat):
     wid_pieces_that_hit = []
     row = 1
 
+    # test_case_objects = []
+
     schemas, weakness_id_schemas = get_schemas(suite_dat)
 
     for xml_project in suite_data.xml_projects:
@@ -553,6 +555,8 @@ def score_xmls(suite_dat):
         test_cases = []
         test_case_files = []
         file_paths = []
+
+        test_case_objects = []  #todo: new 5/2/17
 
         # read namespace from the first xml since it will be the same for all other xmls
         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
@@ -614,44 +618,28 @@ def score_xmls(suite_dat):
                             test_case_name = re.sub('[_a]?\.\w+$', '', file_path)
                         else:
                             test_case_name = ''
-                        test_cases.append(test_case_name)
+
                         file_paths.append(file_path)
 
-                        #############++++++++++++++++++++++++++++++++
-                        # todo: get_opp_counts_per_test_case(os.path.join(os.getcwd(), 'juliet', os.path.dirname(file_path)))
-
-                        # ws3.cell(row=row + 1, column=1).value = file_path
-                        # ws3.cell(row=row + 1, column=2).value = line_number
-                        # row += 1
-
-                        # &&&&&&&&&&&&&&&&&&&&&&
-                        # get_opp_counts_per_file(os.path.join(os.getcwd(), 'juliet', file_path.rsplit('/', 1)[0]))
-
-                        # &&&&&&&&&&&&&&&&&&&&&&
-
-                        # get the test cases list that holds the objects
-                        test_case_objects = getattr(xml_project, 'test_cases')
-
-                        # if this is a new test case name, create a new object for it
-                        if test_case_name not in test_case_objects:
+                        if test_case_name not in test_cases:
                             # create a new test case object
-                            # test_case_objects.append(TestCase(test_case_name))
-                            test_case_objects.append(
-                                TestCase(test_case_name, xml_project.tc_type, xml_project.true_false))
+                            new_tc_obj = TestCase(test_case_name, xml_project.tc_type, xml_project.true_false)
+                            new_tc_obj.hit_data.append([file_path, line_number, function_name])
+                            test_case_objects.append(new_tc_obj)
+
                             # add the new test case object to the xml project list
                             setattr(xml_project, 'test_cases', test_case_objects)
-                            test_case_objects[0].hit_data.append([file_path, line_number, function_name])
+                            test_cases.append(test_case_name)
 
-                        # the test case object now exists so find the correct name and update its hit list
-                        else:  # TODO: THIS IS USELESS ... NEVER HITS IN HERE... LOOK AT THIS?
+                        else:
+                            # the test case object now exists so find the correct name and update its hit data
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
-                                    # test_case_object.function_name = function_name
-                                    # setattr(test_case_object, 'enclosing_function_name', function_name)
                                     hit_data = getattr(test_case_object, 'hit_data')
                                     hit_data.append([file_path, line_number, function_name])
+                                    # setattr(test_case_object)
+                                    break
 
-                                    #############++++++++++++++++++++++++++++++++
 
                 # empty acceptable wid cell on spreadsheet so move on #todo: possibly break or continue to speed up?
                 else:
@@ -673,7 +661,8 @@ def collect_hit_data(suite_dat):
     for xml_project in suite_dat.xml_projects:
         test_case_objects = xml_project.test_cases
         for test_case_obj in test_case_objects:
-            hit_data += test_case_obj.hit_data
+            # hit_data += test_case_obj.hit_data
+            hit_data.extend(test_case_obj.hit_data)
 
     # sort the hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(0, 1))

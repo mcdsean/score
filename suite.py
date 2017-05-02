@@ -29,7 +29,6 @@ class TestCase(object):
         self.tc_type = tc_type
         self.true_false = true_false
 
-
         self.hit_data = []
 
         # auto-run method on creation
