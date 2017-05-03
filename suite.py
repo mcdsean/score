@@ -14,21 +14,15 @@ class TestCase(object):
         # self.tc_file_name = filename
         # dublicate test case file names
         self.duplicate_file_names = []
-        # line number for each 'filename' # todo: delete this?
-        self.line_numbers = []
         # total number of 'FIX' counts (juliet, false only)
         self.opp_names = []
         self.opp_count = 0
-        # line numbers for start and end of each acceptable opp boundary
-        self.opp_blocks = []
         # line number for the 'FIX' (juliet, false only)
         self.opp_location = 0
-        #
         self.enclosing_function_name = []
-
         self.tc_type = tc_type
         self.true_false = true_false
-
+        # file name, line, function
         self.hit_data = []
 
         # auto-run method on creation
@@ -50,7 +44,7 @@ class TestCase(object):
                         # read thru the entire test case file and look for 'good...()' function calls (i.e. opportunities)
                         with open(root + "\\" + file, 'r') as inF:
                             for line in inF:
-                                # if 'FIX' in line:
+                                # if 'good...()' in line:
                                 if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
                                     opp_count += 1
                                     self.opp_names.append(line.strip()[:-3])
@@ -60,11 +54,13 @@ class TestCase(object):
                         found and it only occurs in one file 
                         '''
                         if opp_count != 0:
+                            # pad for even display
+                            self.opp_names = self.opp_names + [''] * (4 - len(self.opp_names))
                             break
 
         else:
             self.opp_count = 1
-            self.opp_names.append('N/A')
+            self.opp_names.extend(['N/A', '', '', ''])
 
 
 class Xml(object):

@@ -84,6 +84,7 @@ def format_workbook():
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
+    ws3.merge_cells('H1:K1')
 
 
 def count_kdm_test_cases(fpr_name):
@@ -645,11 +646,9 @@ def score_xmls(suite_dat):
                                 if test_case_object.test_case_name == test_case_name:
                                     hit_data = getattr(test_case_object, 'hit_data')
                                     hit_data.append([file_path, line_number, function_name])
-                                    # setattr(test_case_object)
                                     break
 
-
-                # empty acceptable wid cell on spreadsheet so move on #todo: possibly break or continue to speed up?
+                # empty acceptable wid cell on spreadsheet so move on
                 else:
                     continue
 
@@ -680,27 +679,28 @@ def collect_hit_data(suite_dat):
     # sort the hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
-    write_hit_data(hit_data)
+    write_opp_count_hit_data(hit_data)
 
 
-def write_hit_data(hit_data):
+def write_opp_count_hit_data(hit_data):
 
     row = 1
-    file_name_dups = []
     file_seen = set()
-    previous_file_name_and_line = []
+    file_name_dups = []
 
-    hor_left = [4, 6]
+    # left column alignment
+    horizontal_left = [4, 6]
 
     for hit in hit_data:
 
         col = 1
 
-        # write row data for each 'qualified' hit
+        # write row data for each  hit
         for cell in hit:
-            ws3.cell(row=row + 1, column=col).value = cell
 
-            if col in hor_left:
+            ws3.cell(row=row + 1, column=col).value = cell
+            # set the alignment based on column
+            if col in horizontal_left:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
             else:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="center", vertical='center')
@@ -710,7 +710,6 @@ def write_hit_data(hit_data):
 
             col += 1
 
-        # todo: move this to score_xmls? ...THIS WORKS
         # identify the duplicate files only
         if hit[3] in file_seen:
             file_name_dups.append(hit[3])
@@ -720,11 +719,16 @@ def write_hit_data(hit_data):
 
         row += 1
 
+    highlight_opp_count_duplicates(hit_data, file_name_dups)
+
+
+def highlight_opp_count_duplicates(hit_data, file_name_dups):
 
     row = 1
-    # todo: create new function here
-    # for each file name check the duplicate list and highlight it if it is a duplicate
 
+    previous_file_name_and_line = []
+
+    # highlight duplicates found in the list
     for hit in hit_data:
 
         for dup_file_name in file_name_dups:
@@ -734,46 +738,19 @@ def write_hit_data(hit_data):
 
                 # if previous_file_name_and_line == list(hit[:2]):
                 if previous_file_name_and_line == list(hit[3:5]):
-                    # todo: put this in a loop like above
                     #  gray - file name an line combo are not unique if
                     #  previous sorted value is identical to this sample
-                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 3, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 4, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 5, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 6, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 7, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 8, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 9, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 10, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 11, 'fg_fill', 'D9D9D9')
-                    # adjust previous row
-                    set_appearance(ws3, row, 1, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 2, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 3, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 4, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 5, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 6, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 7, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 8, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 9, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 10, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 11, 'fg_fill', 'D9D9D9')
+                    for idx, item in enumerate(hit):
+                        # adjust current row
+                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'D9D9D9')
+                        # adjust previous row
+                        set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
 
                 else:
                     # red - unique file name and line number
-                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 3, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 4, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 5, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 6, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 7, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 8, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 9, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 10, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 11, 'fg_fill', 'FFC7CE')
+                    for idx, item in enumerate(hit):
+                        # adjust current row
+                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFC7CE')
 
                 previous_file_name_and_line = list(hit[3:5])
 
@@ -1925,7 +1902,6 @@ if __name__ == '__main__':
     set_appearance(ws3, 7, 7, 'fg_fill', 'FFC7CE')
     set_appearance(ws3, 7, 8, 'fg_fill', 'FFC7CE')
     set_appearance(ws3, 7, 9, 'fg_fill', 'FFC7CE')
-    #ws3.cell(row=2, column=7).alignment = Alignment(horizontal="right", vertical='center')
 
     wb.active = 0
     wb.save(scorecard)
