@@ -5,28 +5,39 @@ import py_common
 FVDL_NAME = "audit.fvdl"
 
 class TestCase(object):
-    # todo: make the argument test case name on creation and then set param for 'the tc_file_name'
     # def __init__(self, filename):
     def __init__(self, test_case_name, tc_type, true_false):
         # test case name
         self.test_case_name = test_case_name
-        # all of the file names within the test case
-        # self.tc_file_name = filename
-        # dublicate test case file names
-        self.duplicate_file_names = []
-        # total number of 'FIX' counts (juliet, false only)
-        self.opp_names = []
-        self.opp_count = 0
-        # line number for the 'FIX' (juliet, false only)
-        self.opp_location = 0
-        self.enclosing_function_name = []
+        # juliet or kdm
         self.tc_type = tc_type
+        # true or false
         self.true_false = true_false
-        # file name, line, function
-        self.hit_data = []
 
-        # auto-run method on creation
+        ''' runtime attributes '''
+        # FILE NAME, LINE, FUNCTION
+        self.hit_data = []
+        '''
+         Level     FILE NAME   FUNCTION    LINE
+           3           x           x         x
+           2           x           x
+           1           x
+           0
+        '''
+        self.hit_data_match_levels = {}
+
+        # enclosing function of hit
+        self.opp_names = []
+        # juliet/false only, else = 1
+        self.opp_count = 0
+        # opps found
+        self.score = 0
+        # percent of opps found
+        self.percent = 0
+
+        ''' auto-run methods on creation '''
         self.get_juliet_false_opp_counts_per_test_case(self.test_case_name)
+        # self.update_match_levels(self.TODO)
 
     def get_juliet_false_opp_counts_per_test_case(self, test_case_name):
 
@@ -47,8 +58,8 @@ class TestCase(object):
                                 # if 'good...()' in line:
                                 if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
                                     opp_count += 1
-                                    self.opp_names.append(line.strip()[:-3])
                                     self.opp_count = opp_count
+                                    self.opp_names.append(line.strip()[:-3])
                         ''' 
                         stop searching the files associated wtih this test case since the opp info has been 
                         found and it only occurs in one file 
@@ -62,6 +73,10 @@ class TestCase(object):
             self.opp_count = 1
             self.opp_names.extend(['N/A', '', '', ''])
 
+    def update_match_levels(self, file_name):
+        # todo: calculate the match level
+        self.hit_data_match_levels = {file_name: 1}
+        print('hello from get_juliet_false_opp_counts_per_test_case')
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):
@@ -73,14 +88,13 @@ class Xml(object):
         self.new_xml_name = new_xml_name
         self.scan_data_file = scan_data_file
 
-        # runtime attributes
+        ''' runtime attributes '''
         self.tc_count = ''
         self.num_of_hits = ''
         self.percent_hits = ''
         self.tc_path = ''
         self.acceptable_weakness_ids = []
         self.used_wids = []
-        self.test_case_files_that_hit = []
         # list of test case objects
         self.test_cases = []
 

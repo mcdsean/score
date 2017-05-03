@@ -30,7 +30,7 @@ XML_OUTPUT_DIR = 'xmls'
 WID_DELIMITER_FORTIFY = ':'
 
 def format_workbook():
-    hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'Hits', 'Opportunities']
+    hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'SCORE', 'Opps', '%', 'Opportunities']
 
     '''
     ws1.protect()	
@@ -67,12 +67,14 @@ def format_workbook():
     ws3.column_dimensions['C'].width = 6
     ws3.column_dimensions['D'].width = 108
     ws3.column_dimensions['E'].width = 6
-    ws3.column_dimensions['F'].width = 75
+    ws3.column_dimensions['F'].width = 11
     ws3.column_dimensions['G'].width = 6
-    ws3.column_dimensions['H'].width = 12
-    ws3.column_dimensions['I'].width = 12
+    ws3.column_dimensions['H'].width = 6
+    ws3.column_dimensions['I'].width = 6
     ws3.column_dimensions['J'].width = 12
     ws3.column_dimensions['K'].width = 12
+    ws3.column_dimensions['L'].width = 12
+    ws3.column_dimensions['M'].width = 12
     ws3.sheet_view.zoomScale = 70
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     # freeze first row and column
@@ -84,7 +86,7 @@ def format_workbook():
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
-    ws3.merge_cells('H1:K1')
+    ws3.merge_cells('J1:M1')
 
 
 def count_kdm_test_cases(fpr_name):
@@ -630,6 +632,7 @@ def score_xmls(suite_dat):
 
                         file_paths.append(file_path)
 
+
                         if test_case_name not in test_cases:
                             # create a new test case object
                             new_tc_obj = TestCase(test_case_name, xml_project.tc_type, xml_project.true_false)
@@ -640,8 +643,14 @@ def score_xmls(suite_dat):
                             setattr(xml_project, 'test_cases', test_case_objects)
                             test_cases.append(test_case_name)
 
+                            ##################
+
+                            new_tc_obj.update_match_levels(file_path)
+
+                            ##################
+
                         else:
-                            # the test case object now exists so find the correct name and update its hit data
+                            # update existing test case object
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
                                     hit_data = getattr(test_case_object, 'hit_data')
@@ -671,25 +680,34 @@ def collect_hit_data(suite_dat):
 
             # build the columns for ws3
             for data1 in test_case_obj.hit_data:
-                temp = [xml_project.cwe_id_padded] + [xml_project.tc_type] + \
-                       [xml_project.true_false] + data1 + [str(test_case_obj.opp_count)]
+                # A , B, C, D-F, G,
+                temp = [xml_project.cwe_id_padded] + \
+                       [xml_project.tc_type] + \
+                       [xml_project.true_false] + \
+                       data1 + \
+                       [str(test_case_obj.score)] + \
+                       [str(test_case_obj.opp_count)] + \
+                       [str(test_case_obj.percent)]
+
+                # J-M
                 temp.extend(test_case_obj.opp_names)
                 hit_data.append(temp)
 
-    # sort the hits by file name and then line number
+    # sort the hits by file name and then line number # todo: maybe sort by file, function, line?
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
-    write_opp_count_hit_data(hit_data)
+    write_hit_data(hit_data)
 
 
-def write_opp_count_hit_data(hit_data):
+def write_hit_data(hit_data):
 
     row = 1
     file_seen = set()
     file_name_dups = []
 
     # left column alignment
-    horizontal_left = [4, 6]
+    horizontal_left = [4]
+    horizontal_right = [6]
 
     for hit in hit_data:
 
@@ -702,15 +720,18 @@ def write_opp_count_hit_data(hit_data):
             # set the alignment based on column
             if col in horizontal_left:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
+            elif col in horizontal_left:
+                ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="right", vertical='center')
             else:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="center", vertical='center')
 
+            # todo: this may be redundant with cells already being written to? make more effiecient?
             # put border around all cells that are written to
             set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')
 
             col += 1
 
-        # identify the duplicate files only
+        # identify the duplicate files #todo: maybe do this when they come in? are they in order though?
         if hit[3] in file_seen:
             file_name_dups.append(hit[3])
             #ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
@@ -743,6 +764,12 @@ def highlight_opp_count_duplicates(hit_data, file_name_dups):
                     for idx, item in enumerate(hit):
                         # adjust current row
                         set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'D9D9D9')
+
+                        # todo: test merge
+                        # #ws3.cell(row=row+1, column=7).value = ''
+                        # if row < 17000:
+                        #     ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
+
                         # adjust previous row
                         set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
 
@@ -751,6 +778,9 @@ def highlight_opp_count_duplicates(hit_data, file_name_dups):
                     for idx, item in enumerate(hit):
                         # adjust current row
                         set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFC7CE')
+
+                        # todo: test merge
+                        # ws3.merge_cells(start_row=row, start_column=7, end_row=row + 1, end_column=7)
 
                 previous_file_name_and_line = list(hit[3:5])
 
