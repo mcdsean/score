@@ -29,7 +29,7 @@ class TestCase(object):
         # enclosing function of hit
         self.opp_names = []
         # juliet/false only, else = 1
-        self.opp_count = 0
+        self.opp_counts = 0
         # opps found
         self.score = 0
         # percent of opps found
@@ -58,7 +58,7 @@ class TestCase(object):
                                 # if 'good...()' in line:
                                 if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
                                     opp_count += 1
-                                    self.opp_count = opp_count
+                                    self.opp_counts = opp_count
                                     self.opp_names.append(line.strip()[:-3])
                         ''' 
                         stop searching the files associated wtih this test case since the opp info has been 
@@ -70,13 +70,12 @@ class TestCase(object):
                             break
 
         else:
-            self.opp_count = 1
+            self.opp_counts = 1
             self.opp_names.extend(['N/A', '', '', ''])
 
     def update_match_levels(self, file_name):
         # todo: calculate the match level
         self.hit_data_match_levels = {file_name: 1}
-        print('hello from get_juliet_false_opp_counts_per_test_case')
 
 class Xml(object):
     def __init__(self, cwe_id_padded, cwe_num, tc_type, true_false, tc_lang, new_xml_name, scan_data_file):

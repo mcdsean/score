@@ -661,7 +661,11 @@ def score_xmls(suite_dat):
                 else:
                     continue
 
-        score = len(set(test_cases))
+        if test_case_type == 'juliet' and xml_project.true_false == 'FALSE':
+            score = 0
+        else:
+            # julite(true) and kdm count one hit per test case
+            score = len(set(test_cases))
 
         print('SCORE:', score)
         setattr(xml_project, 'num_of_hits', score)
@@ -669,14 +673,34 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'test_case_files_that_hit', file_paths)
 
 
+def calculate_test_case_score(test_case_obj):
+    valid_hits = []
+    for valid_hit_data in test_case_obj.hit_data:
+        valid_hits.append(valid_hit_data[2])
+    score = len(set(valid_hits))
+    test_case_obj.score = score
+
+
+def calculate_test_case_percent_hits(test_case_obj):
+    percent = test_case_obj.score / test_case_obj.opp_counts
+    test_case_obj.percent = percent
+
+
+
 def collect_hit_data(suite_dat):
     # file name, line number, and enclosing function of all hits
     hit_data = []
 
-    # all test case files names, and line, from each test cases object
+    # collect all valid hit data to be displayed
     for xml_project in suite_dat.xml_projects:
         test_case_objects = xml_project.test_cases
+        print('collecting hit data for project-----', xml_project.new_xml_name)
         for test_case_obj in test_case_objects:
+
+            # calculate the score for this test case
+            calculate_test_case_score(test_case_obj)
+            # calculate the percent hits for this test case
+            calculate_test_case_percent_hits(test_case_obj)
 
             # build the columns for ws3
             for data1 in test_case_obj.hit_data:
@@ -686,14 +710,14 @@ def collect_hit_data(suite_dat):
                        [xml_project.true_false] + \
                        data1 + \
                        [str(test_case_obj.score)] + \
-                       [str(test_case_obj.opp_count)] + \
+                       [str(test_case_obj.opp_counts)] + \
                        [str(test_case_obj.percent)]
-
                 # J-M
                 temp.extend(test_case_obj.opp_names)
+                # add to composite list for writing to ws3
                 hit_data.append(temp)
 
-    # sort the hits by file name and then line number # todo: maybe sort by file, function, line?
+    # sort hits by file name and then line number # todo: maybe sort by file, function, line?
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
     write_hit_data(hit_data)
@@ -705,22 +729,22 @@ def write_hit_data(hit_data):
     file_seen = set()
     file_name_dups = []
 
-    # left column alignment
+    # column alignments
     horizontal_left = [4]
     horizontal_right = [6]
 
     for hit in hit_data:
 
         col = 1
-
-        # write row data for each  hit
         for cell in hit:
 
+            # write hit data to ws3
             ws3.cell(row=row + 1, column=col).value = cell
+
             # set the alignment based on column
             if col in horizontal_left:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
-            elif col in horizontal_left:
+            elif col in horizontal_right:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="right", vertical='center')
             else:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="center", vertical='center')
