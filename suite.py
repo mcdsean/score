@@ -24,6 +24,7 @@ class TestCase(object):
            1           x
            0
         '''
+        # todo: for coloring, need to develop
         self.hit_data_match_levels = {}
 
         # enclosing function of hit

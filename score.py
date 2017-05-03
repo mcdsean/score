@@ -67,7 +67,7 @@ def format_workbook():
     ws3.column_dimensions['C'].width = 6
     ws3.column_dimensions['D'].width = 108
     ws3.column_dimensions['E'].width = 6
-    ws3.column_dimensions['F'].width = 11
+    ws3.column_dimensions['F'].width = 17
     ws3.column_dimensions['G'].width = 6
     ws3.column_dimensions['H'].width = 6
     ws3.column_dimensions['I'].width = 6
@@ -636,7 +636,8 @@ def score_xmls(suite_dat):
                         if test_case_name not in test_cases:
                             # create a new test case object
                             new_tc_obj = TestCase(test_case_name, xml_project.tc_type, xml_project.true_false)
-                            new_tc_obj.hit_data.append([file_path, line_number, function_name])
+                            short_function_name = function_name.rpartition('_')[2]
+                            new_tc_obj.hit_data.append([file_path, line_number, short_function_name])
                             test_case_objects.append(new_tc_obj)
 
                             # add the new test case object to the xml project list
@@ -653,8 +654,9 @@ def score_xmls(suite_dat):
                             # update existing test case object
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
+                                    short_function_name = function_name.rpartition('_')[2]
                                     hit_data = getattr(test_case_object, 'hit_data')
-                                    hit_data.append([file_path, line_number, function_name])
+                                    hit_data.append([file_path, line_number, short_function_name])
                                     break
 
                 # empty acceptable wid cell on spreadsheet so move on
@@ -675,7 +677,7 @@ def score_xmls(suite_dat):
 
 def calculate_test_case_score(test_case_obj):
     valid_hits = []
-    for valid_hit_data in test_case_obj.hit_data:
+    for valid_hit_data in test_case_obj.hit_data:  # todo: this appears to be working but double-check for sinks, etc
         valid_hits.append(valid_hit_data[2])
     score = len(set(valid_hits))
     test_case_obj.score = score
@@ -684,7 +686,6 @@ def calculate_test_case_score(test_case_obj):
 def calculate_test_case_percent_hits(test_case_obj):
     percent = test_case_obj.score / test_case_obj.opp_counts
     test_case_obj.percent = percent
-
 
 
 def collect_hit_data(suite_dat):
@@ -711,7 +712,7 @@ def collect_hit_data(suite_dat):
                        data1 + \
                        [str(test_case_obj.score)] + \
                        [str(test_case_obj.opp_counts)] + \
-                       [str(test_case_obj.percent)]
+                       [str(round(test_case_obj.percent, 1))]
                 # J-M
                 temp.extend(test_case_obj.opp_names)
                 # add to composite list for writing to ws3
@@ -731,7 +732,7 @@ def write_hit_data(hit_data):
 
     # column alignments
     horizontal_left = [4]
-    horizontal_right = [6]
+    horizontal_right = []
 
     for hit in hit_data:
 
