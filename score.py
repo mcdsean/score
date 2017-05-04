@@ -808,7 +808,6 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
         if idx == next_group_idx:
 
             test_case_name = get_test_case_name(hit)
-            #print('HITS----------', test_case_name, suite_dat.suite_hit_data[test_case_name])
 
             # a.
             group_size = suite_dat.suite_hit_data[test_case_name]
