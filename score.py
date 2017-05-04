@@ -819,6 +819,14 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
             next_group_idx = idx + group_size
 
             ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
+            ws3.merge_cells(start_row=start, start_column=8, end_row=end, end_column=8)
+            ws3.merge_cells(start_row=start, start_column=9, end_row=end, end_column=9)
+            ws3.merge_cells(start_row=start, start_column=10, end_row=end, end_column=10)
+            ws3.merge_cells(start_row=start, start_column=11, end_row=end, end_column=11)
+            ws3.merge_cells(start_row=start, start_column=12, end_row=end, end_column=12)
+            ws3.merge_cells(start_row=start, start_column=13, end_row=end, end_column=13)
+
+        if
 
 
 
