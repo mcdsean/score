@@ -555,6 +555,7 @@ def score_xmls(suite_dat):
     ns = {}
     wid_pieces_that_hit = []
 
+    # suite_hit_data = {} #todo: new test 5/4/17
 
 
     schemas, weakness_id_schemas = get_schemas(suite_dat)
@@ -566,7 +567,7 @@ def score_xmls(suite_dat):
         test_case_files = []
         file_paths = []
 
-        test_case_objects = []  #todo: new 5/2/17
+        test_case_objects = []  #todo: new 5/2/17 CAN I MAKE THIS A SET?
 
         # read namespace from the first xml since it will be the same for all other xmls
         xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
@@ -645,9 +646,9 @@ def score_xmls(suite_dat):
                             test_cases.append(test_case_name)
 
                             ##################
-
-                            new_tc_obj.update_match_levels(file_path)
-
+                            # new_tc_obj.update_match_levels(file_path)
+                            name = new_tc_obj.test_case_name
+                            suite_dat.suite_hit_data[name] = len(new_tc_obj.hit_data)
                             ##################
 
                         else:  # todo: 5/3/17, consider using a dictionary here or defaultdict for speed
@@ -657,7 +658,16 @@ def score_xmls(suite_dat):
                                 if test_case_object.test_case_name == test_case_name:
                                     hit_data = getattr(test_case_object, 'hit_data')
                                     hit_data.append([file_path, line_number, function_name])
+
+                                    ###############
+                                    name = test_case_object.test_case_name
+                                    suite_dat.suite_hit_data[name] = len(test_case_object.hit_data)
+                                    ###############
+
+
                                     break
+
+
 
                 # empty acceptable wid cell on spreadsheet so move on
                 else:
@@ -673,6 +683,8 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'num_of_hits', score)
         setattr(xml_project, 'used_wids', used_wids)
         setattr(xml_project, 'test_case_files_that_hit', file_paths)
+
+    print('SUITE_HIT_DATA=========' )
 
 
 def calculate_test_case_score(test_case_obj):
@@ -695,7 +707,7 @@ def collect_hit_data(suite_dat):
     # collect all valid hit data to be displayed
     for xml_project in suite_dat.xml_projects:
         test_case_objects = xml_project.test_cases
-        print('collecting hit data for project-----', xml_project.new_xml_name)
+        #print('collecting hit data for project-----', xml_project.new_xml_name)
         for test_case_obj in test_case_objects:
 
             # calculate the score for this test case
@@ -788,28 +800,46 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
     previous_file_name_and_line = []
 
     ########################
-    previous_match = False
-    test_case_name = ''
-    rows = 0
+
+    next_group_idx = 0
 
     for idx, hit in enumerate(hit_data):
 
-        if not previous_match:
-            rows = 0
-            start_row = idx + 2
-            test_case_name = get_test_case_name(hit)
-            previous_match = True
-            continue
-        if test_case_name in hit[3]:
-            rows += 1
-        else:
-            previous_match = False
-            stop_row = start_row + rows
+        if idx == next_group_idx:
 
-            print('START_ROW---', start_row, 'STOP_ROW', stop_row)
-            ws3.merge_cells(start_row=start_row, start_column=9, end_row=stop_row, end_column=9)
-            ws3.merge_cells(start_row=start_row, start_column=8, end_row=stop_row, end_column=8)
-            ws3.merge_cells(start_row=start_row, start_column=7, end_row=stop_row, end_column=7)
+            test_case_name = get_test_case_name(hit)
+            #print('HITS----------', test_case_name, suite_dat.suite_hit_data[test_case_name])
+
+            # a.
+            group_size = suite_dat.suite_hit_data[test_case_name]
+            # b.
+            start = (idx + 2)
+            # c.
+            end = (idx + 2) + group_size - 1
+            # d.
+            next_group_idx = idx + group_size
+
+            ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
+
+
+
+
+            # if not previous_match:
+            #     rows = 0
+            #     start_row = idx + 2
+            #     test_case_name = get_test_case_name(hit)
+            #     previous_match = True
+            #     continue
+            # if test_case_name in hit[3]:
+            #     rows += 1
+            # else:
+            #     previous_match = False
+            #     stop_row = start_row + rows
+            #
+            #     print('START_ROW---', start_row, 'STOP_ROW', stop_row)
+            #     # ws3.merge_cells(start_row=start_row, start_column=9, end_row=stop_row, end_column=9)
+            #     # ws3.merge_cells(start_row=start_row, start_column=8, end_row=stop_row, end_column=8)
+            #     # ws3.merge_cells(start_row=start_row, start_column=7, end_row=stop_row, end_column=7)
 
     #####################
 

@@ -113,6 +113,10 @@ class Suite(object):
         # list of tc paths
         self.tc_paths = []
 
+        ###########################################
+        self.suite_hit_data = {}
+        ###########################################
+
         # runtime attributes
         self.name_space = ''
 
@@ -121,6 +125,7 @@ class Suite(object):
         self.used_wids_per_cwe = []
 
         # auto-run methods on creation
+
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
