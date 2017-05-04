@@ -803,9 +803,13 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
 
     next_group_idx = 0
 
+    found_ops_in_group = []  # todo: need to add all found opps hit[5] for each row within a group to highlight as used/not-used
+
     for idx, hit in enumerate(hit_data):
 
+
         if idx == next_group_idx:
+            found_ops_in_group = hit[9:13]
 
             test_case_name = get_test_case_name(hit)
 
@@ -818,31 +822,36 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
             # d.
             next_group_idx = idx + group_size
 
-            for idx1, item in enumerate(hit[9:12]):
+            # merge cells into test case groups # todo: skip merge if group size = 1
+            ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
+            ws3.merge_cells(start_row=start, start_column=8, end_row=end, end_column=8)
+            ws3.merge_cells(start_row=start, start_column=9, end_row=end, end_column=9)
+            ws3.merge_cells(start_row=start, start_column=10, end_row=end, end_column=10)
+            ws3.merge_cells(start_row=start, start_column=11, end_row=end, end_column=11)
+            ws3.merge_cells(start_row=start, start_column=12, end_row=end, end_column=12)
+            ws3.merge_cells(start_row=start, start_column=13, end_row=end, end_column=13)
 
-                print('index=====', idx1, item)
-
-                if item in hit[5]:
-                    set_appearance(ws3, start, idx1 + 10, 'fg_fill', 'A9D08E')
-                else
-                    set_appearance(ws3, start, idx1 + 10, 'fg_fill', 'FFD966')
-
-
-                    # ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
-                    # ws3.merge_cells(start_row=start, start_column=8, end_row=end, end_column=8)
-                    # ws3.merge_cells(start_row=start, start_column=9, end_row=end, end_column=9)
-                    # ws3.merge_cells(start_row=start, start_column=10, end_row=end, end_column=10)
-                    # ws3.merge_cells(start_row=start, start_column=11, end_row=end, end_column=11)
-                    # ws3.merge_cells(start_row=start, start_column=12, end_row=end, end_column=12)
-                    # ws3.merge_cells(start_row=start, start_column=13, end_row=end, end_column=13)
+        #############################
+        # look thru all four possible opportunities
+        # for idx1, item in enumerate(hit[9:13]):
+        for idx1, item in enumerate(found_ops_in_group):
+            if item in hit[5] and len(item) > 0:
+                # green
+                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'A9D08E')
+            elif not len(item):
+                # gray
+                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'D9D9D9')
+            else:
+                # red
+                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'FFC7CE')
 
 
-
+                #############################
 
 
 
 
-            # if not previous_match:
+                # if not previous_match:
             #     rows = 0
             #     start_row = idx + 2
             #     test_case_name = get_test_case_name(hit)
@@ -883,11 +892,11 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                             set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
 
                 else:
-                    # red - unique file name and line number
+                    # blue - unique file name and line number
                     for idx, item in enumerate(hit):
                         if idx < 9:  # todo: NEW 5/4/17
                             # adjust current row
-                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFC7CE')
+                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'BDD7EE')
 
                             # todo: test merge
                             # ws3.merge_cells(start_row=row, start_column=7, end_row=row + 1, end_column=7)
