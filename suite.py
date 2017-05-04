@@ -57,7 +57,9 @@ class TestCase(object):
                         with open(root + "\\" + file, 'r') as inF:
                             for line in inF:
                                 # if 'good...()' in line:
-                                if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
+                                # todo: also exclude lines with Source and Sink
+                                if line.lstrip().startswith('good') and line.rstrip().endswith('();') \
+                                        and 'Source' not in line and 'Sink' not in line:
                                     opp_count += 1
                                     self.opp_counts = opp_count
                                     self.opp_names.append(line.strip()[:-3])
