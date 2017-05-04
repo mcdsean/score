@@ -70,7 +70,7 @@ def format_workbook():
     ws3.column_dimensions['F'].width = 17
     ws3.column_dimensions['G'].width = 6
     ws3.column_dimensions['H'].width = 6
-    ws3.column_dimensions['I'].width = 6
+    ws3.column_dimensions['I'].width = 8
     ws3.column_dimensions['J'].width = 12
     ws3.column_dimensions['K'].width = 12
     ws3.column_dimensions['L'].width = 12
@@ -554,9 +554,8 @@ def score_xmls_1(suite_dat):
 def score_xmls(suite_dat):
     ns = {}
     wid_pieces_that_hit = []
-    row = 1
 
-    # test_case_objects = []
+
 
     schemas, weakness_id_schemas = get_schemas(suite_dat)
 
@@ -625,6 +624,9 @@ def score_xmls(suite_dat):
 
                         if test_case_type == 'juliet':
                             test_case_name = re.sub('[a-z]?\.\w+$', '', file_path)
+                            # reduce juliet function name to 'good ...' portion
+                            function_name = function_name.rpartition('_')[2]
+
                         elif test_case_type == 'kdm':
                             test_case_name = re.sub('[_a]?\.\w+$', '', file_path)
                         else:
@@ -632,12 +634,10 @@ def score_xmls(suite_dat):
 
                         file_paths.append(file_path)
 
-
                         if test_case_name not in test_cases:
                             # create a new test case object
                             new_tc_obj = TestCase(test_case_name, xml_project.tc_type, xml_project.true_false)
-                            short_function_name = function_name.rpartition('_')[2]
-                            new_tc_obj.hit_data.append([file_path, line_number, short_function_name])
+                            new_tc_obj.hit_data.append([file_path, line_number, function_name])
                             test_case_objects.append(new_tc_obj)
 
                             # add the new test case object to the xml project list
@@ -650,13 +650,13 @@ def score_xmls(suite_dat):
 
                             ##################
 
-                        else:
+                        else:  # todo: 5/3/17, consider using a dictionary here or defaultdict for speed
+                            #   todo: 5/3/17, maybe keep a dictionary at the Suite level?
                             # update existing test case object
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
-                                    short_function_name = function_name.rpartition('_')[2]
                                     hit_data = getattr(test_case_object, 'hit_data')
-                                    hit_data.append([file_path, line_number, short_function_name])
+                                    hit_data.append([file_path, line_number, function_name])
                                     break
 
                 # empty acceptable wid cell on spreadsheet so move on
@@ -689,7 +689,7 @@ def calculate_test_case_percent_hits(test_case_obj):
 
 
 def collect_hit_data(suite_dat):
-    # file name, line number, and enclosing function of all hits
+    # file name, line number, and enclosing function
     hit_data = []
 
     # collect all valid hit data to be displayed
@@ -712,19 +712,21 @@ def collect_hit_data(suite_dat):
                        data1 + \
                        [str(test_case_obj.score)] + \
                        [str(test_case_obj.opp_counts)] + \
-                       [str(round(test_case_obj.percent, 1))]
+                       [str(round(test_case_obj.percent * 100, 1)) + ' %']
                 # J-M
                 temp.extend(test_case_obj.opp_names)
+                # unprinted test case lengths used for cell manipulation
+                # temp.extend(test_case_obj.hit_data) #todo: this is a temporary effort to include test case lengths
                 # add to composite list for writing to ws3
                 hit_data.append(temp)
 
     # sort hits by file name and then line number # todo: maybe sort by file, function, line?
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
-    write_hit_data(hit_data)
+    write_hit_data(suite_dat, hit_data)
 
 
-def write_hit_data(hit_data):
+def write_hit_data(suite_dat, hit_data):
 
     row = 1
     file_seen = set()
@@ -732,11 +734,12 @@ def write_hit_data(hit_data):
 
     # column alignments
     horizontal_left = [4]
-    horizontal_right = []
+    horizontal_right = [9]
 
     for hit in hit_data:
 
         col = 1
+
         for cell in hit:
 
             # write hit data to ws3
@@ -765,10 +768,91 @@ def write_hit_data(hit_data):
 
         row += 1
 
-    highlight_opp_count_duplicates(hit_data, file_name_dups)
+    format_hit_data(suite_dat, hit_data, file_name_dups)
 
 
-def highlight_opp_count_duplicates(hit_data, file_name_dups):
+def get_test_case_name(hit_data):
+    test_case_type = hit_data[1]
+    file_name = hit_data[3]
+
+    if test_case_type == 'juliet':
+        test_case_name = re.sub('[a-z]?\.\w+$', '', file_name)
+    else:
+        test_case_name = re.sub('[_a]?\.\w+$', '', file_name)
+
+    return test_case_name
+
+
+def format_hit_data(suite_dat, hit_data, file_name_dups):
+    row = 1
+    previous_file_name_and_line = []
+
+    ########################
+    previous_match = False
+    test_case_name = ''
+    rows = 0
+
+    for idx, hit in enumerate(hit_data):
+
+        if not previous_match:
+            rows = 0
+            start_row = idx + 2
+            test_case_name = get_test_case_name(hit)
+            previous_match = True
+            continue
+        if test_case_name in hit[3]:
+            rows += 1
+        else:
+            previous_match = False
+            stop_row = start_row + rows
+
+            print('START_ROW---', start_row, 'STOP_ROW', stop_row)
+            ws3.merge_cells(start_row=start_row, start_column=9, end_row=stop_row, end_column=9)
+            ws3.merge_cells(start_row=start_row, start_column=8, end_row=stop_row, end_column=8)
+            ws3.merge_cells(start_row=start_row, start_column=7, end_row=stop_row, end_column=7)
+
+    #####################
+
+
+    # highlight duplicates found in the list
+    for hit in hit_data:
+
+        for dup_file_name in file_name_dups:
+
+            # if file name is a duplicate, highlight it's row
+            if hit[3] == dup_file_name:
+
+                # if previous_file_name_and_line == list(hit[:2]):
+                if previous_file_name_and_line == list(hit[3:5]):
+                    #  gray - file name an line combo are not unique if
+                    #  previous sorted value is identical to this sample
+                    for idx, item in enumerate(hit):
+                        # adjust current row
+                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'D9D9D9')
+
+                        # adjust previous row
+                        set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
+
+                else:
+                    # red - unique file name and line number
+                    for idx, item in enumerate(hit):
+                        # adjust current row
+                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFC7CE')
+
+                        # todo: test merge
+                        # ws3.merge_cells(start_row=row, start_column=7, end_row=row + 1, end_column=7)
+
+                previous_file_name_and_line = list(hit[3:5])
+
+                # todo: do this after all cells have been written to or else get an Excel ERROR!
+                # todo: only do this for juliet, false?
+                # todo: this currently does not work (at least at this location)
+                # ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
+
+        row += 1
+
+
+def format_hit_data_1(hit_data, file_name_dups):
 
     row = 1
 
@@ -815,6 +899,7 @@ def highlight_opp_count_duplicates(hit_data, file_name_dups):
                 #ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
 
         row += 1
+
 
 def write_opp_counts_2(suite_dat):
 
@@ -1026,11 +1111,6 @@ def write_opp_counts_1(suite_dat):
         #         else:
         #             seen.add(n)
         #     row2 += 1
-
-
-def sort(v):  # for sorting
-    return v[0], v[1]  # , v[7]
-    #return v[0]
 
 
 def import_xml_tags_ORIGINAL(suite_dat):
@@ -1948,15 +2028,15 @@ if __name__ == '__main__':
     collect_hit_data(suite_data)
 
     # todo: temp hack, ok to delete once implemented globally 5/2/17
-    ws3.merge_cells(start_row=6, start_column=7, end_row=7, end_column=7)
-    ws3.merge_cells(start_row=6, start_column=8, end_row=7, end_column=8)
-    ws3.merge_cells(start_row=6, start_column=9, end_row=7, end_column=9)
-    ws3.cell(row=6, column=7).alignment = Alignment(vertical="center", horizontal='center')
-    ws3.cell(row=6, column=8).alignment = Alignment(vertical="center", horizontal='center')
-    ws3.cell(row=6, column=9).alignment = Alignment(vertical="center", horizontal='center')
-    set_appearance(ws3, 7, 7, 'fg_fill', 'FFC7CE')
-    set_appearance(ws3, 7, 8, 'fg_fill', 'FFC7CE')
-    set_appearance(ws3, 7, 9, 'fg_fill', 'FFC7CE')
+    # ws3.merge_cells(start_row=6, start_column=7, end_row=7, end_column=7)
+    # ws3.merge_cells(start_row=6, start_column=8, end_row=7, end_column=8)
+    # ws3.merge_cells(start_row=6, start_column=9, end_row=7, end_column=9)
+    # ws3.cell(row=6, column=7).alignment = Alignment(vertical="center", horizontal='center')
+    # ws3.cell(row=6, column=8).alignment = Alignment(vertical="center", horizontal='center')
+    # ws3.cell(row=6, column=9).alignment = Alignment(vertical="center", horizontal='center')
+    # set_appearance(ws3, 7, 7, 'fg_fill', 'FFC7CE')
+    # set_appearance(ws3, 7, 8, 'fg_fill', 'FFC7CE')
+    # set_appearance(ws3, 7, 9, 'fg_fill', 'FFC7CE')
 
     wb.active = 0
     wb.save(scorecard)
