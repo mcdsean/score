@@ -664,10 +664,7 @@ def score_xmls(suite_dat):
                                     suite_dat.suite_hit_data[name] = len(test_case_object.hit_data)
                                     ###############
 
-
                                     break
-
-
 
                 # empty acceptable wid cell on spreadsheet so move on
                 else:
@@ -683,8 +680,6 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'num_of_hits', score)
         setattr(xml_project, 'used_wids', used_wids)
         setattr(xml_project, 'test_case_files_that_hit', file_paths)
-
-    print('SUITE_HIT_DATA=========' )
 
 
 def calculate_test_case_score(test_case_obj):
