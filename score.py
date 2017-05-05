@@ -448,109 +448,6 @@ def get_schemas(suite_dat):
     return schemas, weakness_id_schemas
 
 
-def score_xmls_1(suite_dat):
-    ns = {}
-    wid_pieces_that_hit = []
-
-    schemas, weakness_id_schemas = get_schemas(suite_dat)
-
-    for xml_project in suite_data.xml_projects:
-
-        used_wids = []
-        test_cases = []
-        test_case_files = []
-
-        # read namespace from the first xml since it will be the same for all other xmls
-        xml_path = os.path.join(os.getcwd(), 'xmls', getattr(xml_project, 'new_xml_name'))
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-        setattr(suite_dat, 'name_space', ns)  # todo: we only need this one time
-
-        print('XML', xml_path)
-
-        # get the acceptable wids for this xml
-        good_wids = getattr(xml_project, 'acceptable_weakness_ids')
-        test_case_type = getattr(xml_project, 'tc_type')
-        tool_name = getattr(suite_data, 'tool_name')
-
-        # 1. parse thru each row in this xml looking for good wids, and get the filename & line #
-        # for vuln in root.findall('./' + finding_type_schema, ns):
-        for vuln in root.findall('./' + schemas['finding_type_schema'], ns):
-            #todo: add condition for tag vs attribute; need flags in switch statement above
-            del wid_pieces_that_hit[:]
-
-            # 2. get relative path/filename and line number for this row in this xml
-            file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
-            line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
-            filename = os.path.basename(file_path)
-            function_name = vuln.find(schemas['function_name_schema'], ns).attrib[schemas['function_name_attrib']]
-
-            # 3. get all pieces of the wid for this row in the xml
-            for idx, weakness_id in enumerate(weakness_id_schemas):
-                wid_piece = vuln.find(weakness_id_schemas[idx], ns)
-                if wid_piece is not None:
-                    wid_pieces_that_hit.append(wid_piece.text)
-
-            # 4. look at each non-empty cell in the spreadsheet for acceptable wids
-            for good_wid in good_wids:
-                if tool_name == 'fortify':
-                    good_wid_pieces = good_wid.split(WID_DELIMITER_FORTIFY)
-                else:
-                    good_wid_pieces = good_wid
-
-                # 5. if the current cell in spreadsheet does not contain a cwe # or is blank, move on
-                if good_wid != 'None' and not good_wid.isdigit():
-
-                    # 6. see if ALL of the pieces for this row match this cell's good wid
-                    if set(wid_pieces_that_hit) != set(good_wid_pieces):
-                        continue
-
-                    else:
-                        # add the used wid to the list if it is not already there
-                        if good_wid not in used_wids:
-                            used_wids.append(good_wid)
-
-                        test_case_files.append([filename, line_number])
-
-                        # todo: consider using 'not in' like above, but may want to write all to sheet instead?
-                        # juliet test case
-                        if test_case_type == 'juliet':
-                            test_case_name = re.sub('[a-z]?\.\w+$', '', filename)
-                        # kdm test case
-                        elif test_case_type == 'kdm':
-                            test_case_name = re.sub('[_a]?\.\w+$', '', filename)
-                        else:
-                            test_case_name = ''
-                        test_cases.append(test_case_name)
-
-                    #############
-
-                    # TODO: NEW CODE-------------------------------------------------------4/26/17
-                    # get_opp_counts_per_test_case(os.path.join(os.getcwd(), 'juliet', os.path.dirname(file_path)))
-
-                    # $$$$$$$$$$$$$$$$$$$$$$$
-                    # get the test cases list that holds the objects
-                    test_case_file = getattr(xml_project, 'test_cases')
-                    # if the test case name does not exist yet, create a new 'TestCase' object
-                    test_case_file.append(TestCase([file_path, int(line_number)]))
-                    setattr(xml_project, 'test_cases', test_case_file)
-                    #############
-
-                # empty good wid cell so move on
-                else:
-                    continue
-
-        score = len(set(test_cases))
-
-        print('SCORE:', score)
-        setattr(xml_project, 'num_of_hits', score)
-        setattr(xml_project, 'used_wids', used_wids)
-        setattr(xml_project, 'test_case_files_that_hit', file_path)
-        setattr(xml_project, 'test_case_files_and_line_that_hit', test_case_files)
-
-
 def score_xmls(suite_dat):
 
     ns = {}
@@ -646,12 +543,9 @@ def score_xmls(suite_dat):
                             # add the new test case object to the xml project list
                             setattr(xml_project, 'test_cases', test_case_objects)
                             test_cases.append(test_case_name)
-
-                            ##################
-                            # new_tc_obj.update_match_levels(file_path)
+                            # store the number of hits for this test case
                             name = new_tc_obj.test_case_name
                             suite_dat.suite_hit_data[name] = len(new_tc_obj.hit_data)
-                            ##################
 
                         else:  # todo: 5/3/17, consider using a dictionary here or defaultdict for speed
                             #    todo: 5/3/17, maybe keep a dictionary at the Suite level?
@@ -660,12 +554,9 @@ def score_xmls(suite_dat):
                                 if test_case_object.test_case_name == test_case_name:
                                     hit_data = getattr(test_case_object, 'hit_data')
                                     hit_data.append([file_path, line_number, function_name])
-
-                                    ###############
+                                    # update the number of hits for this test case
                                     name = test_case_object.test_case_name
                                     suite_dat.suite_hit_data[name] = len(test_case_object.hit_data)
-                                    ###############
-
                                     break
 
                 # empty acceptable wid cell on spreadsheet so move on
@@ -673,15 +564,27 @@ def score_xmls(suite_dat):
                     continue
 
         if test_case_type == 'juliet' and xml_project.true_false == 'FALSE':
-            score = 0
+            score = 0  # todo: 5/5/7 juliet/false will be calculated seperately
+            # score = calculate_juliet_false_xml_score(xml_project)
+
         else:
-            # julite(true) and kdm count one hit per test case
+            # juliet(true) and kdm counts, one hit per test case
             score = len(set(test_cases))
 
-        print('SCORE:', score)
+        # store data for each xml project
         setattr(xml_project, 'num_of_hits', score)
         setattr(xml_project, 'used_wids', used_wids)
         setattr(xml_project, 'test_case_files_that_hit', file_paths)
+
+        print('SCORE:', score)
+
+
+# def calculate_juliet_false_xml_score(xml_project):
+#
+#     for test_case in xml_project.test_cases:
+#
+#
+#     return score
 
 
 def calculate_test_case_score(test_case_obj):
@@ -690,6 +593,14 @@ def calculate_test_case_score(test_case_obj):
         valid_hits.append(valid_hit_data[2])
     score = len(set(valid_hits))
     test_case_obj.score = score
+    # todo: 5/5/7 should i tally up the soores here per xml?
+    # todo: 5/5/7 only calculate for juliet false?
+
+    ####################################
+    # todo: 5/5/7 NEW ... needs verified
+    if test_case_obj.tc_type == 'juliet' and test_case_obj.true_false == 'FALSE':
+        setattr(test_case_obj, 'score', score)
+        ####################################
 
 
 def calculate_test_case_percent_hits(test_case_obj):
@@ -708,6 +619,8 @@ def collect_hit_data(suite_dat):
         for test_case_obj in test_case_objects:
 
             # calculate the score for this test case
+            # todo: 5/5/7 we only need this for juliet, false?
+            # todo: 5/5/7 bug found in sheet for juliet, true, get 200% of four hits?
             calculate_test_case_score(test_case_obj)
             # calculate the percent hits for this test case
             calculate_test_case_percent_hits(test_case_obj)
@@ -715,19 +628,29 @@ def collect_hit_data(suite_dat):
             # build the columns for ws3
             for data1 in test_case_obj.hit_data:
                 # A , B, C, D-F, G, H, I
-                temp = [xml_project.cwe_id_padded] + \
-                       [xml_project.tc_type] + \
+                hit_data_columns = [xml_project.cwe_id_padded] + \
+                                   [xml_project.tc_type] + \
                        [xml_project.true_false] + \
                        data1 + \
                        [test_case_obj.score] + \
                        [test_case_obj.opp_counts] + \
                        [str(round(test_case_obj.percent * 100, 1)) + ' %']
                 # J-M, opportunities
-                temp.extend(test_case_obj.opp_names)
+                hit_data_columns.extend(test_case_obj.opp_names)
                 # add to composite list for writing to ws3
-                hit_data.append(temp)
+                hit_data.append(hit_data_columns)
 
-    # sort hits by file name and then line number # todo: maybe sort by file, function, line?
+            ############################
+            # todo: 5/5/7 NEW, needs verified
+
+            xml_project.num_of_hits += test_case_obj.score
+
+        score = xml_project.num_of_hits
+        setattr(xml_project, 'num_of_hits', score)
+        print('NEW_JULIET_FALSE_SCORE', xml_project.new_xml_name, score)
+        ############################
+
+    # sort hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
     write_hit_data(suite_dat, hit_data)
@@ -1645,7 +1568,8 @@ def remove_dups(d):
     return new_d
 
 
-def write_details(data_details):
+def write_details(suite_data_details):
+
     #########################################################################################################
     detail_sheet_titles = ['CWE', 'Type', 'T/F', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'RAW Project File']
     #########################################################################################################
@@ -1654,10 +1578,6 @@ def write_details(data_details):
 
     attribute_list = ['cwe_id_padded', 'tc_type', 'true_false', 'tc_count', 'num_of_hits', 'percent_hits',
                       'new_xml_name', 'tc_path', 'scan_data_file']
-
-
-    # perform multi-column sorts
-    #scan_data.sort(key=sort)
 
     # freeze first row and column
     ws2.freeze_panes = ws2['B2']
@@ -1670,9 +1590,9 @@ def write_details(data_details):
 
     # write detailed data
     for j, attrib in enumerate(attribute_list):
-        for i, xml_data in enumerate(data_details.xml_projects):
+        for i, xml_data in enumerate(suite_data_details.xml_projects):
             # juliet or kdm
-            tc_attrib = getattr(data_details.xml_projects[i], attrib)
+            tc_attrib = getattr(suite_data_details.xml_projects[i], attrib)
             ws2.cell(row=i + 2, column=j + 1).value = tc_attrib
             set_appearance(ws2, i + 2, j + 2, 'fg_fill', 'FFFFFF')
             ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
@@ -1748,6 +1668,7 @@ def write_details_ORIGINAL(scan_data):
 
 
 def write_summary(scan_data):
+
     #########################################################################################################
     detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
     #########################################################################################################
@@ -1780,6 +1701,7 @@ def write_summary(scan_data):
 
         row += 1
 
+        # tally up the results from each xml project
         for xml_project in scan_data.xml_projects:
             if cwe == getattr(xml_project, 'cwe_id_padded'):
                 if 'TRUE' == getattr(xml_project, 'true_false'):
@@ -2047,21 +1969,11 @@ if __name__ == '__main__':
     get_used_wids(suite_data)
 
     # write to sheets
+    collect_hit_data(suite_data)  # todo: 5/5/7 moved this here
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
-    collect_hit_data(suite_data)
-
-    # todo: temp hack, ok to delete once implemented globally 5/2/17
-    # ws3.merge_cells(start_row=6, start_column=7, end_row=7, end_column=7)
-    # ws3.merge_cells(start_row=6, start_column=8, end_row=7, end_column=8)
-    # ws3.merge_cells(start_row=6, start_column=9, end_row=7, end_column=9)
-    # ws3.cell(row=6, column=7).alignment = Alignment(vertical="center", horizontal='center')
-    # ws3.cell(row=6, column=8).alignment = Alignment(vertical="center", horizontal='center')
-    # ws3.cell(row=6, column=9).alignment = Alignment(vertical="center", horizontal='center')
-    # set_appearance(ws3, 7, 7, 'fg_fill', 'FFC7CE')
-    # set_appearance(ws3, 7, 8, 'fg_fill', 'FFC7CE')
-    # set_appearance(ws3, 7, 9, 'fg_fill', 'FFC7CE')
+    #collect_hit_data(suite_data)
 
     wb.active = 0
     wb.save(scorecard)
