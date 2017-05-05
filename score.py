@@ -591,9 +591,8 @@ def score_xmls(suite_dat):
 
             # 2. get relative path/filename and line number for this row in this xml
             file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
-            # safeguard agains support files
+            # exclude support files
             if not file_path.startswith('T/') and not file_path.startswith('F/'):
-                # print('not a test case file --------', file_path)
                 continue
             line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
             function_name = vuln.find(schemas['function_name_schema'], ns).attrib[schemas['function_name_attrib']]
@@ -715,18 +714,16 @@ def collect_hit_data(suite_dat):
 
             # build the columns for ws3
             for data1 in test_case_obj.hit_data:
-                # A , B, C, D-F, G,
+                # A , B, C, D-F, G, H, I
                 temp = [xml_project.cwe_id_padded] + \
                        [xml_project.tc_type] + \
                        [xml_project.true_false] + \
                        data1 + \
-                       [str(test_case_obj.score)] + \
-                       [str(test_case_obj.opp_counts)] + \
+                       [test_case_obj.score] + \
+                       [test_case_obj.opp_counts] + \
                        [str(round(test_case_obj.percent * 100, 1)) + ' %']
-                # J-M
+                # J-M, opportunities
                 temp.extend(test_case_obj.opp_names)
-                # unprinted test case lengths used for cell manipulation
-                # temp.extend(test_case_obj.hit_data) #todo: this is a temporary effort to include test case lengths
                 # add to composite list for writing to ws3
                 hit_data.append(temp)
 
