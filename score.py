@@ -796,21 +796,20 @@ def get_test_case_name(hit_data):
 
 
 def format_hit_data(suite_dat, hit_data, file_name_dups):
+
     row = 1
+    start = 0
+    group_size = 0
+    next_group_idx = 0
+    found_ops_in_group = []
     previous_file_name_and_line = []
 
-    ########################
-
-    next_group_idx = 0
-
-    found_ops_in_group = []  # todo: need to add all found opps hit[5] for each row within a group to highlight as used/not-used
-
+    # color opportunities used(green), unused(red) or none(gray)
     for idx, hit in enumerate(hit_data):
 
-
         if idx == next_group_idx:
-            found_ops_in_group = hit[9:13]
 
+            found_ops_in_group = hit[9:13]
             test_case_name = get_test_case_name(hit)
 
             # a.
@@ -822,7 +821,9 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
             # d.
             next_group_idx = idx + group_size
 
-            # merge cells into test case groups # todo: skip merge if group size = 1
+            # merge cells into test case groups
+            # todo: 5/4/17 skip merge if group size=1
+            # todo: 5/4/17 do for juliet false only?
             ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
             ws3.merge_cells(start_row=start, start_column=8, end_row=end, end_column=8)
             ws3.merge_cells(start_row=start, start_column=9, end_row=end, end_column=9)
@@ -831,46 +832,23 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
             ws3.merge_cells(start_row=start, start_column=12, end_row=end, end_column=12)
             ws3.merge_cells(start_row=start, start_column=13, end_row=end, end_column=13)
 
-        #############################
-        # look thru all four possible opportunities
-        # for idx1, item in enumerate(hit[9:13]):
-        for idx1, item in enumerate(found_ops_in_group):
-            if item in hit[5] and len(item) > 0:
-                # green
-                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'A9D08E')
-            elif not len(item):
-                # gray
-                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'D9D9D9')
-            else:
+            # look thru all four possible opportunities
+            for idx1, item in enumerate(found_ops_in_group):
                 # red
-                set_appearance(ws3, idx + 2, idx1 + 10, 'fg_fill', 'FFC7CE')
+                for a in range(start, start + group_size):
+                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'FFC7CE')
+                # gray
+                if not len(item):
+                    for a in range(start, start + group_size):
+                        set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'D9D9D9')
 
+        for idx1, item in enumerate(found_ops_in_group):
+            # green
+            if item in hit[5] and len(item) > 0:
+                for a in range(start, start + group_size):
+                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'A9D08E')
 
-                #############################
-
-
-
-
-                # if not previous_match:
-            #     rows = 0
-            #     start_row = idx + 2
-            #     test_case_name = get_test_case_name(hit)
-            #     previous_match = True
-            #     continue
-            # if test_case_name in hit[3]:
-            #     rows += 1
-            # else:
-            #     previous_match = False
-            #     stop_row = start_row + rows
-            #
-            #     print('START_ROW---', start_row, 'STOP_ROW', stop_row)
-            #     # ws3.merge_cells(start_row=start_row, start_column=9, end_row=stop_row, end_column=9)
-            #     # ws3.merge_cells(start_row=start_row, start_column=8, end_row=stop_row, end_column=8)
-            #     # ws3.merge_cells(start_row=start_row, start_column=7, end_row=stop_row, end_column=7)
-
-    #####################
-
-
+    # todo: 5/5/17 this needs optimized and probably put into existing loop above or better approach
     # highlight duplicates found in the list
     for hit in hit_data:
 
@@ -886,10 +864,10 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                     for idx, item in enumerate(hit):
                         if idx < 9:  # todo: NEW 5/4/17
                             # adjust current row
-                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'D9D9D9')
+                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFD966')
 
                             # adjust previous row
-                            set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
+                            set_appearance(ws3, row, idx + 1, 'fg_fill', 'FFD966')
 
                 else:
                     # blue - unique file name and line number
@@ -898,15 +876,8 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                             # adjust current row
                             set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'BDD7EE')
 
-                            # todo: test merge
-                            # ws3.merge_cells(start_row=row, start_column=7, end_row=row + 1, end_column=7)
-
                 previous_file_name_and_line = list(hit[3:5])
 
-                # todo: do this after all cells have been written to or else get an Excel ERROR!
-                # todo: only do this for juliet, false?
-                # todo: this currently does not work (at least at this location)
-                # ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
 
         row += 1
 
