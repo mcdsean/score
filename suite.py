@@ -115,7 +115,8 @@ class Suite(object):
         self.tc_paths = []
 
         ###########################################
-        self.suite_hit_data = {}
+        # stores the hits per test case {test_case_name: hit_count}
+        self.suite_hit_data = {}  # todo: 5/4/17 new
         ###########################################
 
         # runtime attributes
@@ -126,7 +127,6 @@ class Suite(object):
         self.used_wids_per_cwe = []
 
         # auto-run methods on creation
-
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)

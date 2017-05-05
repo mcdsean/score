@@ -552,11 +552,9 @@ def score_xmls_1(suite_dat):
 
 
 def score_xmls(suite_dat):
+
     ns = {}
     wid_pieces_that_hit = []
-
-    # suite_hit_data = {} #todo: new test 5/4/17
-
 
     schemas, weakness_id_schemas = get_schemas(suite_dat)
 
@@ -593,6 +591,10 @@ def score_xmls(suite_dat):
 
             # 2. get relative path/filename and line number for this row in this xml
             file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
+            # safeguard agains support files
+            if not file_path.startswith('T/') and not file_path.startswith('F/'):
+                # print('not a test case file --------', file_path)
+                continue
             line_number = vuln.find(schemas['line_number_schema'], ns).attrib[schemas['line_number_attrib']]
             function_name = vuln.find(schemas['function_name_schema'], ns).attrib[schemas['function_name_attrib']]
 
@@ -605,17 +607,17 @@ def score_xmls(suite_dat):
             # 4. look at each non-empty cell in the spreadsheet for acceptable wids
             for good_wid in good_wids:
                 if tool_name == 'fortify':
+                    # split each wid based on it's delimiter
                     good_wid_pieces = good_wid.split(WID_DELIMITER_FORTIFY)
                 else:
                     good_wid_pieces = good_wid
 
+                # todo: 5/5/17 optimize, move on to next upon first blank cell in row
                 # 5. if the current cell in spreadsheet does not contain a cwe # or is blank, move on
                 if good_wid != 'None' and not good_wid.isdigit():
-
                     # 6. see if ALL of the pieces for this row match this cell's good wid
                     if set(wid_pieces_that_hit) != set(good_wid_pieces):
                         continue
-
                     else:
                         # this is a good wid so add it to the list if it is not already there
                         if good_wid not in used_wids:
@@ -629,6 +631,7 @@ def score_xmls(suite_dat):
                             function_name = function_name.rpartition('_')[2]
 
                         elif test_case_type == 'kdm':
+                            # todo: 5/5/17 reduce kdm name for display in ws3 (similar to juliet above)
                             test_case_name = re.sub('[_a]?\.\w+$', '', file_path)
                         else:
                             test_case_name = ''
@@ -652,7 +655,7 @@ def score_xmls(suite_dat):
                             ##################
 
                         else:  # todo: 5/3/17, consider using a dictionary here or defaultdict for speed
-                            #   todo: 5/3/17, maybe keep a dictionary at the Suite level?
+                            #    todo: 5/3/17, maybe keep a dictionary at the Suite level?
                             # update existing test case object
                             for test_case_object in test_case_objects:
                                 if test_case_object.test_case_name == test_case_name:
