@@ -91,9 +91,9 @@ class Xml(object):
         self.scan_data_file = scan_data_file
 
         ''' runtime attributes '''
-        self.tc_count = ''
-        self.num_of_hits = ''
-        self.percent_hits = ''
+        self.tc_count = 0
+        self.num_of_hits = 0
+        self.percent_hits = 0
         self.tc_path = ''
         self.acceptable_weakness_ids = []
         self.used_wids = []

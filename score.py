@@ -15,6 +15,10 @@ from time import strftime
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, Reference
+
+from hashlib import sha1
+# import hashlib
+
 # from openpyxl.formatting.rule import ColorScaleRule
 
 from openpyxl.formatting.rule import ColorScaleRule
@@ -47,7 +51,9 @@ def format_workbook():
     ws1.column_dimensions['E'].width = 8
     ws1.column_dimensions['F'].width = 8
     ws1.column_dimensions['G'].width = 8
+    ws1.column_dimensions['AC'].width = 12
     ws1.sheet_view.zoomScale = 90
+    ws1.sheet_view.showGridLines = False
 
     # set varying col widths for sheet 2
     ws2.column_dimensions['A'].width = 8
@@ -55,11 +61,12 @@ def format_workbook():
     ws2.column_dimensions['C'].width = 6
     ws2.column_dimensions['D'].width = 5
     ws2.column_dimensions['E'].width = 6
-    ws2.column_dimensions['F'].width = 5
-    ws2.column_dimensions['G'].width = 43
+    ws2.column_dimensions['F'].width = 6
+    ws2.column_dimensions['G'].width = 38
     ws2.column_dimensions['H'].width = 62
-    ws2.column_dimensions['I'].width = 105
+    ws2.column_dimensions['I'].width = 95
     ws2.sheet_view.zoomScale = 80
+    ws2.sheet_view.showGridLines = False
 
     # hit data
     ws3.column_dimensions['A'].width = 8
@@ -75,8 +82,9 @@ def format_workbook():
     ws3.column_dimensions['K'].width = 12
     ws3.column_dimensions['L'].width = 12
     ws3.column_dimensions['M'].width = 12
-    ws3.sheet_view.zoomScale = 70
+    ws3.sheet_view.zoomScale = 80
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    ws3.sheet_view.showGridLines = False
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
     ws3.sheet_properties.tabColor = "A9D08E"
@@ -642,12 +650,15 @@ def collect_hit_data(suite_dat):
 
             ############################
             # todo: 5/5/7 NEW, needs verified
+            if xml_project.tc_type == 'juliet' and xml_project.true_false == 'FALSE':
+                xml_project.num_of_hits += test_case_obj.score
+                xml_project.tc_count += test_case_obj.opp_counts
+        xml_project.percent_hits = str(round((xml_project.num_of_hits / xml_project.tc_count) * 100, 1)) + ' '
 
-            xml_project.num_of_hits += test_case_obj.score
-
-        score = xml_project.num_of_hits
-        setattr(xml_project, 'num_of_hits', score)
-        print('NEW_JULIET_FALSE_SCORE', xml_project.new_xml_name, score)
+        # score = xml_project.num_of_hits
+        # tc_count = xml_project.tc_count
+        # #setattr(xml_project, 'num_of_hits', score) # todo: 5/5/7 does not look like we need this
+        # print('NEW_JULIET_FALSE_SCORE', xml_project.new_xml_name, score)
         ############################
 
     # sort hits by file name and then line number
@@ -1593,35 +1604,47 @@ def write_details(suite_data_details):
         for i, xml_data in enumerate(suite_data_details.xml_projects):
             # juliet or kdm
             tc_attrib = getattr(suite_data_details.xml_projects[i], attrib)
+
+            # set colors for false
+            if suite_data_details.xml_projects[i].true_false == 'FALSE':
+                if suite_data_details.xml_projects[i].num_of_hits > 0:
+                    # red
+                    set_appearance(ws2, i + 2, 5, 'font_color', 'C00000')
+                    set_appearance(ws2, i + 2, 6, 'font_color', 'C00000')
+                    set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'FFC7CE')
+                else:
+                    # green font, white fill
+                    set_appearance(ws2, i + 2, 5, 'font_color', '548235')
+                    set_appearance(ws2, i + 2, 6, 'font_color', '548235')
+                    set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'FFFFFF')
+            else:
+                # set colors for true
+                if suite_data_details.xml_projects[i].num_of_hits > 0:
+                    # green font, white fill
+                    set_appearance(ws2, i + 2, 5, 'font_color', '548235')
+                    set_appearance(ws2, i + 2, 6, 'font_color', '548235')
+                    set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'FFFFFF')
+                else:
+                    # red
+                    set_appearance(ws2, i + 2, 5, 'font_color', 'C00000')
+                    set_appearance(ws2, i + 2, 6, 'font_color', 'C00000')
+                    set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'FFC7CE')
+
+            # write data to cells
             ws2.cell(row=i + 2, column=j + 1).value = tc_attrib
-            set_appearance(ws2, i + 2, j + 2, 'fg_fill', 'FFFFFF')
-            ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
 
-    #todo: keep this stuff until colors are implemented
-    '''
-    for data in scan_data:
+            # set fill color for col=1 and rows for hits=0
+            if j == 0:
+                # dark gray
+                set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'C6C6C6')
 
-        row += 1
-
-        # write data to sheets
-        for idx, data_id in enumerate(data):
-            ws2.cell(row=row, column=idx + 1).value = data_id
-
-            set_appearance(ws2, row, idx + 1, 'fg_fill', 'FFFFFF')
-            ws2.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-
-        # set appearance & style
-        if data[3] > 0:  # if hits > 0
-            if data[7] == "TRUE":  # if true
-                set_appearance(ws2, row, 4, 'font_color', '548235')
-                set_appearance(ws2, row, 5, 'font_color', '548235')
-            if data[7] == "FALSE":  # if false
-                set_appearance(ws2, row, 4, 'font_color', 'C00000')
-                set_appearance(ws2, row, 5, 'font_color', 'C00000')
-        else:  # no hits
-            set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
-            set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
-    '''
+            # align columns
+            if j == 1 or j == 2:
+                ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="center")
+            elif j == 6 or j == 7 or j == 8:
+                ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
+            else:
+                ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
 
 
 def write_details_ORIGINAL(scan_data):
@@ -1667,18 +1690,18 @@ def write_details_ORIGINAL(scan_data):
             set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
 
 
+# def update_used_wids(scan_data):
+#     for scan_data.
+
+
 def write_summary(scan_data):
 
     #########################################################################################################
-    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
+    summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
     #########################################################################################################
 
     row = 1
-    # scan_data.sort()#todo: will need to sort new data?
-
     cwes = []
-
-    summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
 
     ws1.freeze_panes = ws1['H2']
 
@@ -1697,7 +1720,7 @@ def write_summary(scan_data):
     # collect data for each cwe and summarize
     for cwe in unique_cwes:
 
-        tc_t = tc_f = tp = fp = prec = rec = 0
+        tc_t = tc_f = tp = fp = 0
 
         row += 1
 
@@ -1715,7 +1738,7 @@ def write_summary(scan_data):
         # for row1 in ws1.iter_rows('A1:C2'):
         for row1 in ws1.iter_rows():
             for cell in row1:
-                if cell.col_idx > 1:
+                if 1 < cell.col_idx < 9:
                     if tp == 0:
                         set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'F2F2F2')
                     else:
@@ -1745,14 +1768,28 @@ def write_summary(scan_data):
         ws1.cell(row=row, column=5).value = fp
         ws1.cell(row=row, column=7).value = recall
         #todo: loop this
-        ws1.cell(row=row, column=7).number_format = '0.00'
         ws1.cell(row=row, column=2).number_format = '#,##0'
         ws1.cell(row=row, column=3).number_format = '#,##0'
         ws1.cell(row=row, column=4).number_format = '#,##0'
         ws1.cell(row=row, column=5).number_format = '#,##0'
+        ws1.cell(row=row, column=7).number_format = '0.00'
+
+    # todo: 5/6/7 manual review notice needs auto insert from ws3
+    # manual review notification
+    ws1.cell(row=32, column=8).alignment = Alignment(horizontal="left", vertical='center')
+    ws1.merge_cells(start_row=32, start_column=8, end_row=32, end_column=29)
+    ws1.cell(row=32, column=8).value = '  * There are no test cases requiring manual review!'
+    cell = ws1['H32']
+    set_appearance(ws1, 32, 8, 'font_color', '548235', False)
+    cell.font = cell.font.copy(bold=False, italic=True)
+
+    # revision with git hash
+    ws1.cell(row=1, column=8).alignment = Alignment(horizontal="left", vertical='center')
+    ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=29)
+    ws1.cell(row=1, column=8).value = '  v2.0_' + git_hash
 
 
-def set_appearance(ws_id, row_id, col_id, style_id, color_id):
+def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
     cell = ws_id.cell(row=row_id, column=col_id)
 
     if style_id == 'font_color':
@@ -1762,10 +1799,11 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id):
         fill_color = PatternFill(fgColor=color_id, fill_type='solid')
         cell.fill = fill_color
 
-    # build thin border for all styles
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'),
-                         bottom=Side(style='thin'))
-    cell.border = thin_border
+    if border:
+        # build thin border for all styles
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'),
+                             bottom=Side(style='thin'))
+        cell.border = thin_border
 
 
 def create_summary_chart():
@@ -1916,6 +1954,20 @@ def get_used_wids(scan_data):
         # todo: paint the vendor input wids if found (or not found)
 
 
+def githash():
+    # todo: 6/6/7 develop this for tacking version on ws1
+    s = sha1()
+    with open('C:\\01\\score.py', 'r') as f:
+        while True:
+            data1 = f.read().encode('utf-8')
+            if not data1:
+                break
+    file_length = os.stat('C:\\01\\score.py').st_size
+    s.update(("blob %u\0" % file_length).encode('utf-8'))
+    s.update(data1)
+    return s.hexdigest()
+
+
 if __name__ == '__main__':
 
     data = []
@@ -1945,11 +1997,16 @@ if __name__ == '__main__':
     scorecard = os.path.join(suite_path, time) + '.xlsx'
     shutil.copyfile(vendor_input, scorecard)
 
+    # todo: 5/6/7 create argument for all files in the project
+    git_hash = githash()
+
+
     # add sheets and format
     wb = load_workbook(scorecard)
     ws1 = wb.create_sheet('Summary', 0)
     ws2 = wb.create_sheet('Detailed Data', 1)
-    ws3 = wb.create_sheet('Opportunity Counts', 5)
+    ws3 = wb.create_sheet('Opportunity Counts', 2)
+    ws4 = wb.create_sheet('Analytics', 3)
 
     format_workbook()
 
@@ -1973,7 +2030,7 @@ if __name__ == '__main__':
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
-    #collect_hit_data(suite_data)
+    #update_used_wids(suite_data)
 
     wb.active = 0
     wb.save(scorecard)
