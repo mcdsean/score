@@ -18,7 +18,8 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl import utils
 
 from hashlib import sha1
-# import hashlib
+
+import itertools
 
 # from openpyxl.formatting.rule import ColorScaleRule
 
@@ -1921,33 +1922,35 @@ def flatten(lis):
 
 
 def paint_used_wids(suite_dat):
-    print(suite_dat)
-
-    # todo: consider consolidating this function with 'import_xml_tags'
-    row = 1
-    col = 1
 
     ws = wb.get_sheet_by_name('Weakness IDs')
-    row_count = ws.max_row
-    col_count = ws.max_column
 
-    print(suite_data.used_wids_per_cwe)
-
-    weakness_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-
-    # put all weakness ids into 'weakness_ids' list
+    # iterate thru each row
     for row_idx in ws.iter_rows():
-        for cell in row_idx:
-            # for wid in suite_data.used_wids_per_cwe:
-            for used_wid in suite_data.used_wids_per_cwe:
 
-                if 'CWE' + str(cell.value) == used_wid[0]:
-                    print("CWE_________________", cell.value)
+        # go thru all used wids
+        for used_wid in suite_dat.used_wids_per_cwe:
 
-                    set_appearance(ws, cell.row, cell.col_idx, 'fg_fill', 'FFC7CE')
+            col = 0
+
+            # check col=0 of each list for a matching cwe
+            if str(row_idx[col].value) in used_wid[col][3:]:
+
+                for sheet_wid in row_idx:
+
+                    if col > 0 and sheet_wid.value is not None:
+
+                        print('sheet_wid', sheet_wid.value)
+
+                        for wid in used_wid:
+                            if sheet_wid.value in wid:
+                                print('MATCH_FOUND_FOR^^^^^^^^^^^^', used_wid)
+                                set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'A9D08E')
+                    col += 1
 
 
 def get_used_wids(scan_data):
+
     cwes = []
 
     for xml_project in scan_data.xml_projects:
@@ -1970,9 +1973,6 @@ def get_used_wids(scan_data):
 
         unique_used_wids_per_cwe = list(set(used_wids_per_cwe))
         scan_data.used_wids_per_cwe.append([cwe, unique_used_wids_per_cwe])
-        print('here')
-
-        # todo: paint the vendor input wids if found (or not found)
 
 
 def get_used_wids_1(scan_data):
@@ -2081,7 +2081,7 @@ if __name__ == '__main__':
     # get a summary of all used wids
     get_used_wids(suite_data)
 
-    #paint_used_wids(suite_data)
+    paint_used_wids(suite_data)
 
     # write to sheets
     collect_hit_data(suite_data)  # todo: 5/5/7 moved this here
