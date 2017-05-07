@@ -15,6 +15,7 @@ from time import strftime
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, Reference
+from openpyxl import utils
 
 from hashlib import sha1
 # import hashlib
@@ -1617,6 +1618,10 @@ def write_details(suite_data_details):
                     set_appearance(ws2, i + 2, 5, 'font_color', '548235')
                     set_appearance(ws2, i + 2, 6, 'font_color', '548235')
                     set_appearance(ws2, i + 2, j + 1, 'fg_fill', 'FFFFFF')
+
+                if suite_data_details.xml_projects[i].tc_type == 'juliet':
+                    # highlight juliet/false test cases as opp counts (vs. TC)
+                    set_appearance(ws2, i + 2, 4, 'font_color', '0000FF')
             else:
                 # set colors for true
                 if suite_data_details.xml_projects[i].num_of_hits > 0:
@@ -1688,10 +1693,6 @@ def write_details_ORIGINAL(scan_data):
         else:  # no hits
             set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
             set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
-
-
-# def update_used_wids(scan_data):
-#     for scan_data.
 
 
 def write_summary(scan_data):
@@ -1786,7 +1787,7 @@ def write_summary(scan_data):
     # revision with git hash
     ws1.cell(row=1, column=8).alignment = Alignment(horizontal="left", vertical='center')
     ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=29)
-    ws1.cell(row=1, column=8).value = '  v2.0_' + git_hash
+    ws1.cell(row=1, column=8).value = ' v2.0_' + git_hash[:7]  # todo: short hash? or long?
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
@@ -1919,7 +1920,62 @@ def flatten(lis):
     return lis
 
 
+def paint_used_wids(suite_dat):
+    print(suite_dat)
+
+    # todo: consider consolidating this function with 'import_xml_tags'
+    row = 1
+    col = 1
+
+    ws = wb.get_sheet_by_name('Weakness IDs')
+    row_count = ws.max_row
+    col_count = ws.max_column
+
+    print(suite_data.used_wids_per_cwe)
+
+    weakness_ids = [[0 for x in range(col_count)] for y in range(row_count)]
+
+    # put all weakness ids into 'weakness_ids' list
+    for row_idx in ws.iter_rows():
+        for cell in row_idx:
+            # for wid in suite_data.used_wids_per_cwe:
+            for used_wid in suite_data.used_wids_per_cwe:
+
+                if 'CWE' + str(cell.value) == used_wid[0]:
+                    print("CWE_________________", cell.value)
+
+                    set_appearance(ws, cell.row, cell.col_idx, 'fg_fill', 'FFC7CE')
+
+
 def get_used_wids(scan_data):
+    cwes = []
+
+    for xml_project in scan_data.xml_projects:
+        cwes.append(getattr(xml_project, 'cwe_id_padded'))
+    unique_cwes = list(set(cwes))
+    unique_cwes.sort()  # todo: dont think this is necessary
+
+    for cwe in unique_cwes:
+
+        used_wids_per_cwe = []
+
+        # go thru each project looking for this cwe
+        for xml_project in suite_data.xml_projects:
+
+            # if the cwe for this project matches, get it's wids
+            if cwe == getattr(xml_project, 'cwe_id_padded'):
+                used_wids_per_cwe.extend(getattr(xml_project, 'used_wids'))
+            else:
+                continue
+
+        unique_used_wids_per_cwe = list(set(used_wids_per_cwe))
+        scan_data.used_wids_per_cwe.append([cwe, unique_used_wids_per_cwe])
+        print('here')
+
+        # todo: paint the vendor input wids if found (or not found)
+
+
+def get_used_wids_1(scan_data):
     cwes = []
 
     for xml_project in scan_data.xml_projects:
@@ -2025,12 +2081,13 @@ if __name__ == '__main__':
     # get a summary of all used wids
     get_used_wids(suite_data)
 
+    #paint_used_wids(suite_data)
+
     # write to sheets
     collect_hit_data(suite_data)  # todo: 5/5/7 moved this here
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()
-    #update_used_wids(suite_data)
 
     wb.active = 0
     wb.save(scorecard)
