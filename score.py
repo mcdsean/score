@@ -56,6 +56,7 @@ def format_workbook():
     ws1.column_dimensions['AC'].width = 12
     ws1.sheet_view.zoomScale = 90
     ws1.sheet_view.showGridLines = False
+    # ws1.sheet_properties.tabColor = "E6B8B7"
 
     # set varying col widths for sheet 2
     ws2.column_dimensions['A'].width = 8
@@ -69,6 +70,7 @@ def format_workbook():
     ws2.column_dimensions['I'].width = 95
     ws2.sheet_view.zoomScale = 80
     ws2.sheet_view.showGridLines = False
+    #ws2.sheet_properties.tabColor = "E6B8B7"
 
     # hit data
     ws3.column_dimensions['A'].width = 8
@@ -89,7 +91,7 @@ def format_workbook():
     ws3.sheet_view.showGridLines = False
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
-    ws3.sheet_properties.tabColor = "A9D08E"
+    #ws3.sheet_properties.tabColor = "E6B8B7"
     # write column headers
     for idx, title in enumerate(hit_sheet_titles):
         set_appearance(ws3, 1, idx + 1, 'fg_fill', 'A9D08E')
@@ -97,6 +99,11 @@ def format_workbook():
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
     ws3.merge_cells('J1:M1')
+
+    # analytics
+    ws4.freeze_panes = ws4['A2']
+    ws4.sheet_view.zoomScale = 80
+    ws4.sheet_view.showGridLines = False
 
 
 def count_kdm_test_cases(fpr_name):
@@ -306,110 +313,6 @@ def paint_sheet(used_wid_list):
         set_appearance(ws, 3, 3, 'fg_fill', 'F4B084')
 
 
-def get_data(src_path, dest_path):
-    # container to hold one slot of data per scan
-    data_list = []
-    juliet_f_hits_total = []
-
-    used_weakness_ids_total = []
-    used_unique_ids = []
-
-    # kdm_counts_and_path = []
-    # juliet_counts_and_path = []
-
-    create_or_clean_xml_dir(dest_path)
-
-    # fortify files are not in standard xml format
-    if TOOL_NAME == 'fortify':
-        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.fpr$')
-    else:
-        scan_data_files = py_common.find_files_in_dir(src_path, '.*?\.xml$')
-
-    for scan_data_file in scan_data_files:
-
-        # get t/f from scan data file name #todo: put in function named get test_case_type_and_polarity()
-        if '\\T\\' in scan_data_file:
-            t_f = 'TRUE'
-        else:
-            t_f = 'FALSE'
-
-        proj_name = os.path.basename(scan_data_file)
-        proj_sub_name = proj_name.rsplit('.', 2)[1]
-
-        if 'juliet' in scan_data_file:
-            test_case_type = 'juliet'
-            xml_name = proj_sub_name + '_' + t_f[:1] + '_' + test_case_type + '.xml'
-        elif 'kdm' in scan_data_file:
-            test_case_type = 'kdm'
-            xml_name = proj_sub_name + '_' + test_case_type + '.xml'
-        else:
-            print('NO TEST CASE TYPE FOUND!')
-
-        if TOOL_NAME == 'fortify':
-            extract_fvdl_from_fpr(scan_data_file, dest_path)
-
-        # format xml name
-        tool_path_to_xml = os.path.join(dest_path, FVDL_NAME)
-        new_path_to_xml = os.path.join(dest_path, xml_name)
-        # create fresh xml name
-        os.rename(tool_path_to_xml, new_path_to_xml)
-
-        # get cwe number from project name
-        match = re.search('CWE\d+', proj_name)
-        cwe_num = match.group(0)[3:].lstrip('0')
-        cwe_padded = 'CWE' + cwe_num.zfill(3)
-
-        # --- AUTO SCORE --- returns the score, used weakness ids, and opp counts for the current project
-        score, used_weakness_ids, juliet_f_hits, juliet_f_testcase_path = auto_score(new_path_to_xml, cwe_num,
-                                                                                     test_case_type, t_f)
-        used_weakness_ids_total += used_weakness_ids
-        juliet_f_hits_total += juliet_f_hits
-        used_unique_ids = remove_dups(used_weakness_ids_total)
-
-        # juliet
-        if test_case_type == 'juliet':
-            juliet_counts_and_path = count_juliet_test_cases(scan_data_file)
-
-            # for juliet false test cases, use opps vs test case count
-            if t_f == 'TRUE':
-                juliet_count = juliet_counts_and_path[0]
-            elif t_f == 'FALSE':
-                # juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(juliet_f_testcase_path))
-                # opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-                opps_per_test_case = get_opp_counts_per_test_case(juliet_f_testcase_path)
-                juliet_count = sum(opps_per_test_case.values())
-            else:
-                print('TRUE/FALSE NOT FOUND')
-
-            juliet_path = juliet_counts_and_path[1]
-            if juliet_count != 0:
-                percent_hits = (score / juliet_count) * 100
-            else:
-                percent_hits = 0
-            data_list.append(
-                [cwe_padded, test_case_type, juliet_count, score, round(percent_hits, 1), xml_name, juliet_path, t_f,
-                 proj_name])
-
-        # kdm
-        if test_case_type == 'kdm':
-            kdm_counts_and_path = count_kdm_test_cases(scan_data_file)
-            kdm_count = kdm_counts_and_path[0]
-            kdm_path = kdm_counts_and_path[1]
-            if kdm_count != 0:
-                percent_hits = (score / kdm_count) * 100
-            else:
-                percent_hits = 0
-            data_list.append(
-                [cwe_padded, test_case_type, kdm_count, score, round(percent_hits, 1), xml_name, kdm_path, t_f,
-                 proj_name])
-
-    paint_sheet(used_unique_ids)
-
-    write_opp_counts_to_sheet(juliet_f_hits_total)
-
-    return data_list
-
-
 def get_schemas(suite_dat):
     schemas = {}
     weakness_id_schemas = []
@@ -587,14 +490,6 @@ def score_xmls(suite_dat):
         setattr(xml_project, 'test_case_files_that_hit', file_paths)
 
         print('SCORE:', score)
-
-
-# def calculate_juliet_false_xml_score(xml_project):
-#
-#     for test_case in xml_project.test_cases:
-#
-#
-#     return score
 
 
 def calculate_test_case_score(test_case_obj):
@@ -809,291 +704,7 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
 
                 previous_file_name_and_line = list(hit[3:5])
 
-
         row += 1
-
-
-def format_hit_data_1(hit_data, file_name_dups):
-
-    row = 1
-
-    previous_file_name_and_line = []
-
-    # highlight duplicates found in the list
-    for hit in hit_data:
-
-        for dup_file_name in file_name_dups:
-
-            # if file name is a duplicate, highlight it's row
-            if hit[3] == dup_file_name:
-
-                # if previous_file_name_and_line == list(hit[:2]):
-                if previous_file_name_and_line == list(hit[3:5]):
-                    #  gray - file name an line combo are not unique if
-                    #  previous sorted value is identical to this sample
-                    for idx, item in enumerate(hit):
-                        # adjust current row
-                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'D9D9D9')
-
-                        # todo: test merge
-                        # #ws3.cell(row=row+1, column=7).value = ''
-                        # if row < 17000:
-                        #     ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
-
-                        # adjust previous row
-                        set_appearance(ws3, row, idx + 1, 'fg_fill', 'D9D9D9')
-
-                else:
-                    # red - unique file name and line number
-                    for idx, item in enumerate(hit):
-                        # adjust current row
-                        set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFC7CE')
-
-                        # todo: test merge
-                        # ws3.merge_cells(start_row=row, start_column=7, end_row=row + 1, end_column=7)
-
-                previous_file_name_and_line = list(hit[3:5])
-
-                # todo: do this after all cells have been written to or else get an Excel ERROR!
-                # todo: only do this for juliet, false?
-                # todo: this currently does not work (at least at this location)
-                #ws3.merge_cells(start_row=row, start_column=7, end_row=row+1, end_column=7)
-
-        row += 1
-
-
-def write_opp_counts_2(suite_dat):
-
-    ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
-    ##############################################################################################################
-
-    row = 1
-    file_names_and_line_numbs = []
-
-    # freeze first row and column
-    ws3.freeze_panes = ws3['A2']
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    # write column headers
-    for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
-        ws3.cell(row=1, column=idx + 1).value = title
-        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    # all test case files names, and line, from each test cases object
-    for xml_project in suite_dat.xml_projects:
-        # file_names_and_line_numbs.append(xml_project.test_case_files_and_line_that_hit)
-        file_names_and_line_numbs += xml_project.test_case_files_and_line_that_hit
-
-        test_case_objects = xml_project.test_cases
-
-
-        for test_case_obj in test_case_objects:
-            row += 1
-            # ws3.cell(row=row, column=3).value = test_case_obj.enclosing_function_name
-            ws3.cell(row=row, column=3).value = getattr(test_case_obj, 'enclosing_function_name')
-
-    '''
-    # all test case files names, and line, from each test cases object
-    for xml_project in suite_dat.xml_projects:
-        test_case_objects = xml_project.test_cases
-        for test_case_obj in test_case_objects:
-            file_names_and_line_numbs.append(test_case_obj.test_case_name)
-    '''
-
-    # sort the list by file name and then line number
-    file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
-
-    # todo: put this and associated code into test case object 'duplicate_file_names' in score_xmls
-    file_name_dups = []
-    file_seen = set()
-    previous_file_name_and_line = []
-    row = 1
-    for file_name_and_line in file_names_and_line_numbs:
-
-        # write the file name and line for each hit
-        ws3.cell(row=row + 1, column=1).value = file_name_and_line[0]
-        ws3.cell(row=row + 1, column=2).value = file_name_and_line[1]
-        # set appearance and alignment
-        # todo: put this in a loop to cover all columns which is not determined yet
-        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
-        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
-        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
-
-        # todo: move this to score_xmls...THIS WORKS
-        # identify the duplicate files only
-        if file_name_and_line[0] in file_seen:
-            file_name_dups.append(file_name_and_line[0])
-            #ws3.cell(row=row, column=3).value = file_name_and_line[0]  # todo: DEBUG code, delete when thru
-        else:
-            file_seen.add(file_name_and_line[0])
-
-        row += 1
-
-    row = 1
-    # todo: create new function here
-    # for each file name check the duplicate list and highlight it if it is a duplicate
-    for file_name_and_line in file_names_and_line_numbs:
-
-        for dup_file_name in file_name_dups:
-
-            # if file name is a duplicate, highlight it's row
-            if file_name_and_line[0] == dup_file_name:
-
-                if previous_file_name_and_line == file_name_and_line:
-                    # todo: put in loop to cove all cols
-                    # todo: write this info to the test case object
-                    #  gray - file name an line combo are not unique if
-                    #  previous sorted value is identical to this sample
-                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
-                    # adjust previous row
-                    set_appearance(ws3, row, 1, 'fg_fill', 'D9D9D9')
-                    set_appearance(ws3, row, 2, 'fg_fill', 'D9D9D9')
-
-                else:
-                    # red - unique file name and line number
-                    set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
-                    set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
-                previous_file_name_and_line = file_name_and_line
-
-        row += 1
-
-
-def write_opp_counts_1(suite_dat):
-    ##############################################################################################################
-    opportunity_count_sheet_titles = ['File (Juliet/False)', 'Line #', 'Hits(Scored)', 'Opportunities', ]
-    ##############################################################################################################
-
-    row = 1
-    file_names_and_line_numbs = []
-
-    # freeze first row and column
-    ws3.freeze_panes = ws3['A2']
-    ws3.sheet_properties.tabColor = "A9D08E"
-
-    # write column headers
-    for idx, title in enumerate(opportunity_count_sheet_titles):
-        set_appearance(ws3, row, idx + 1, 'fg_fill', 'A9D08E')
-        ws3.cell(row=1, column=idx + 1).value = title
-        ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    # all tese cases files names, and line, from each test cases object
-    for xml_project in suite_dat.xml_projects:
-        test_case_objects = xml_project.test_cases
-        for test_case_obj in test_case_objects:
-            file_names_and_line_numbs.append(test_case_obj.tc_file_name)
-
-    # sort the list by file name and then line number
-    file_names_and_line_numbs = sorted(file_names_and_line_numbs, key=operator.itemgetter(0, 1))
-
-    # todo: put this and associated ocde into test case object 'duplicate_file_names' in score_xmls
-    file_name_dups = []
-    file_seen = set()
-    previous_file_and_line = []
-
-
-    for file_name_and_numb in file_names_and_line_numbs:
-
-        ws3.cell(row=row + 1, column=1).value = file_name_and_numb[0]
-        ws3.cell(row=row + 1, column=2).value = file_name_and_numb[1]
-        # set appearance and alignment
-        # todo: put this in a loop to cover all columns which is not determined yet
-        set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFFFFF')
-        set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFFFFF')
-        ws3.cell(row=row + 1, column=2).alignment = Alignment(horizontal="right")
-
-        # todo: move this to score_xmls...THIS WORKS
-        # identify the duplicate files only
-        if file_name_and_numb[0] in file_seen:
-            file_name_dups.append(file_name_and_numb[0])
-            ws3.cell(row=row, column=3).value = file_name_and_numb[0]  # todo: DEBUG code, delete when thru
-        else:
-            file_seen.add(file_name_and_numb[0])
-
-        # # todo: move this to score_xmls...EXPERIMENTAL
-        # # identify the duplicate files only
-        # if file_name_and_numb in file_seen:
-        #     file_dups.append(file_name_and_numb)
-        #     ws3.cell(row=row, column=3).value = file_name_and_numb[0]  # todo: DEBUG code, delete when thru
-        # else:
-        #     file_seen.append(file_name_and_numb)
-
-        row += 1
-
-    # deduped based on both file name and line
-    deduped_list = set(tuple(element) for element in file_names_and_line_numbs)
-    # NOTE: to convert set() back to list, use: [list(t) for t in set(tuple(element) for element in xx)]
-
-    row = 1
-    # todo: consider de-duplicating all files with matching line numbers
-    # for each file check the duplicate list and highlight it if it is a duplicate
-    for file_name_and_numb in file_names_and_line_numbs:
-        for dup in file_name_dups:
-
-            # if previous_file_and_line == dup:
-            #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
-            #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
-
-
-            # if file name is duplicate, highlight it
-            if file_name_and_numb[0] == dup:
-                set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
-                set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
-
-
-                # file namees with unique line numbers
-                # if file_name_and_numb[0] in deduped_list:
-                # if file_name_and_numb[0] in deduped_list:
-                #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'FFC7CE')
-                #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'FFC7CE')
-                # else:
-                #     # file names with matching line numbers
-                #     set_appearance(ws3, row + 1, 1, 'fg_fill', 'D9D9D9')
-                #     set_appearance(ws3, row + 1, 2, 'fg_fill', 'D9D9D9')
-
-        row += 1
-
-
-
-
-        # row2 = 1
-        #
-        # for item in file_names_and_line_numbs[0]:
-        #     seen = set()
-        #     #todo: keep this
-        #     # identify the duplicate file+lineno combos
-        #     for n in temp:
-        #         if n in seen:
-        #             ws3.cell(row=row2, column=3).value = n
-        #             print("duplicate:", n)
-        #             ws3.cell(row=row2, column=2).fill = PatternFill(bgColor="FFC7CE", fill_type="solid")
-        #         else:
-        #             seen.add(n)
-        #     row2 += 1
-
-
-def import_xml_tags_ORIGINAL(suite_dat):
-    row = 0
-
-    score_xmls(suite_dat)
-    ns = getattr(suite_data, 'name_space')
-
-    ws = wb.get_sheet_by_name('XML Tags')
-    row_count = ws.max_row
-    col_count = ws.max_column
-
-    tag_ids = [[0 for x in range(col_count)] for y in range(row_count)]
-
-    for row_idx in ws.iter_rows():
-        col = 0
-        for cell in row_idx:
-            tag_ids[row][col] = str(cell.value)
-            col += 1
-        row += 1
-
-    setattr(suite_dat, 'tag_info', tag_ids)
 
 
 def import_xml_tags(suite_dat):
@@ -1113,323 +724,6 @@ def import_xml_tags(suite_dat):
         row += 1
 
     setattr(suite_dat, 'tag_info', tag_ids)
-
-
-def auto_score(suite_dat):
-
-    i = 0
-    ns = {}
-
-    opps_per_test_case = {}
-
-    # get xml schema from vendor input file
-    for idx, tag in enumerate(tag_ids):
-        if idx == 1:
-            finding_type_schema = tag_ids[idx][1]
-        if idx == 2:
-            file_name_schema = tag_ids[idx][1]
-        if idx > 2:
-            weakness_id_schemas.append(tag_ids[idx][1])
-
-    # add namespace(s) to schemas
-    finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
-    file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
-
-    for w_id in weakness_id_schemas:
-        weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
-        i += 1
-
-    # get acceptable weakness id groups
-    acceptable_weaknesses = import_weakness_ids(cwe_no)
-    for acceptable_weakness in acceptable_weaknesses:
-        acceptable_groups.append(str(acceptable_weakness).split(':'))
-
-
-
-    juliet_f_tc_type = False
-    first_time_thru_project = True
-    juliet_f_tc_hits = []
-    juliet_f_tc_hits_deduped = []
-
-    test_case_files = []
-    acceptable_groups = []
-    weakness_id_schemas = []
-    de_duped_used_wid_list = []
-
-    # get opp counts for juliet-false only
-    if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-        # get opp counts per test case
-        first_time_thru_project = False
-        # count hits per test cases (<= oc)
-        juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-        opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-
-    '''
-    # read namespace from xml
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-    '''
-
-    tag_ids = import_xml_tags()
-
-    # parse this xml
-    for vuln in root.findall('./' + finding_type, ns):
-        # weakness id parts
-        kingdom = vuln.find(weakness_id_schemas[0], ns)
-        type = vuln.find(weakness_id_schemas[1], ns)
-        subtype = vuln.find(weakness_id_schemas[2], ns)
-        fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-            'line']  # todo: 'line' hardcoded for now and not all tools may have this
-        filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
-        filename = os.path.basename(filepath)
-        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))#todo: keep this for another possible approach. Faster?
-
-        '''
-        # get opp counts for juliet-false only
-        if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-            # get opp counts per test case
-            first_time_thru_project = False
-            # count hits per test cases (<= oc)
-            juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-            opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-        '''
-
-        for group in acceptable_groups:
-            found = False
-            # valid groups
-            if len(group) == 1:
-                if kingdom.text in group[0]:
-                    found = True
-            elif len(group) == 2:
-                if (kingdom.text in group[0]) and (type.text in group[1]):
-                    found = True
-            elif (len(group) == 3) and ('Subtype' in str(subtype)):#todo do i need this for the new version?
-                if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
-                    found = True
-
-            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
-                # JULIET
-                if test_case_type == 'juliet':
-                    if test_case_t_f == 'TRUE':
-                        # reduce filename to test case name by removing variant and file extension
-                        filename = re.sub('[a-z]?\.\w+$', '', filename)
-                    else:  # false
-                        # if command line argument '-n = <normalize>', process the same as true
-                        if normalize_juliet_false_scoring:
-                            # treat false the same as true
-                            filename = re.sub('[a-z]?\.\w+$', '', filename)
-                        else:
-                            juliet_f_tc_type = True
-                            # accumulate all hits and line numbers
-                            juliet_f_tc_hits.append([filepath, fileline])
-                # KDM
-                elif test_case_type == 'kdm':
-                    filename = re.sub('[_a]?\.\w+$', '', filename)
-                else:
-                    print('NOT_Juliet_or_KDM_Test_Case')
-                    continue
-
-                test_case_files.append(filename)
-
-                # todo: finish adding to vendor input sheet
-                # used_wid_list.append([cwe_no, group])
-                # de_duped_used_wid_list = remove_dups(used_wid_list)
-
-    '''
-    # copy file names for all hits
-    juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
-    juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
-
-    # determine how many hits each file has
-    for file in juliet_f_tc_hits_deduped:
-        i, j = 0, 0
-        # Count the number of hits each file received
-        for file2 in juliet_f_tc_hits:
-            if file2[0] == file:
-                oc_count = file2[1]
-                # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
-                print('oc_count', oc_count)
-                if oc_count > i:
-                    i += 1  # used
-                    j += 1
-                else:
-                    j += 1  # actual
-                    print("COUNT_EXCEEDED_OC")
-
-        print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
-        op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
-
-    collect_hit_data(op_sheet_list)
-   '''
-
-    # get the unique hits for each file variant
-    if juliet_f_tc_type:
-        juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
-        score = len(juliet_f_tc_hits_deduped)
-    # get the unique hits for each set of test case files
-    else:
-        score = len(set(test_case_files))
-
-    # return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
-    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
-
-
-def auto_score_ORIGINAL(xml_path, cwe_no, test_case_type, test_case_t_f):
-    i = 0
-    ns = {}
-
-    opps_per_test_case = {}
-
-    juliet_f_tc_type = False
-    first_time_thru_project = True
-    juliet_f_tc_hits = []
-    juliet_f_tc_hits_deduped = []
-
-    test_case_files = []
-    acceptable_groups = []
-    weakness_id_schemas = []
-    de_duped_used_wid_list = []
-
-    '''
-    # get opp counts for juliet-false only
-    if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-        # get opp counts per test case
-        first_time_thru_project = False
-        # count hits per test cases (<= oc)
-        juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-        opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-    '''
-
-    # read namespace from xml
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    ns["ns1"] = root.tag.split("}")[0].replace('{', '')
-
-    tag_ids = import_xml_tags()
-
-    # get xml schema from vendor input file
-    for idx, tag in enumerate(tag_ids):
-        if idx == 1:
-            finding_type_schema = tag_ids[idx][1]
-        if idx == 2:
-            file_name_schema = tag_ids[idx][1]
-        if idx > 2:
-            weakness_id_schemas.append(tag_ids[idx][1])
-
-    # add namespace(s) to schemas
-    finding_type = 'ns1:' + finding_type_schema.replace('/', '/ns1:')
-    file_name = 'ns1:' + file_name_schema.replace('/', '/ns1:')
-
-    for w_id in weakness_id_schemas:
-        weakness_id_schemas[i] = 'ns1:' + w_id.replace('/', '/ns1:')
-        i += 1
-
-    # get acceptable weakness id groups
-    acceptable_weaknesses = import_weakness_ids(cwe_no)
-    for acceptable_weakness in acceptable_weaknesses:
-        acceptable_groups.append(str(acceptable_weakness).split(':'))
-
-    # parse this xml
-    for vuln in root.findall('./' + finding_type, ns):
-        # weakness id parts
-        kingdom = vuln.find(weakness_id_schemas[0], ns)
-        type = vuln.find(weakness_id_schemas[1], ns)
-        subtype = vuln.find(weakness_id_schemas[2], ns)
-        fileline = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib[
-            'line']  # todo: 'line' hardcoded for now and not all tools may have this
-        filepath = vuln.find(file_name.rsplit('/', 1)[0], ns).attrib['path']  # todo: 'path' hardcoded for now
-        filename = os.path.basename(filepath)
-        juliet_f_testcase_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-
-        '''
-        # get opp counts for juliet-false only
-        if first_time_thru_project and test_case_type == 'Juliet' and test_case_t_f == 'FALSE':
-            # get opp counts per test case
-            first_time_thru_project = False
-            # count hits per test cases (<= oc)
-            juliet_test_case_path = os.path.join(os.getcwd(), 'juliet', os.path.dirname(filepath))
-            opps_per_test_case = get_opp_counts_per_test_case(juliet_test_case_path)
-        '''
-
-        for group in acceptable_groups:
-            found = False
-            # valid groups
-            if len(group) == 1:
-                if kingdom.text in group[0]:
-                    found = True
-            elif len(group) == 2:
-                if (kingdom.text in group[0]) and (type.text in group[1]):
-                    found = True
-            elif (len(group) == 3) and ('Subtype' in str(subtype)):
-                if (kingdom.text in group[0]) and (type.text in group[1]) and (subtype.text in group[2]):
-                    found = True
-
-            if found:  # if found, this weakness id group, for this xml (project), is being used so we will count it as a hit
-                # JULIET
-                if test_case_type == 'juliet':
-                    if test_case_t_f == 'TRUE':
-                        # reduce filename to test case name by removing variant and file extension
-                        filename = re.sub('[a-z]?\.\w+$', '', filename)
-                    else:  # false
-                        # if command line argument '-n = <normalize>', process the same as true
-                        if normalize_juliet_false_scoring:
-                            # treat false the same as true
-                            filename = re.sub('[a-z]?\.\w+$', '', filename)
-                        else:
-                            juliet_f_tc_type = True
-                            # accumulate all hits and line numbers
-                            juliet_f_tc_hits.append([filepath, fileline])
-                # KDM
-                elif test_case_type == 'kdm':
-                    filename = re.sub('[_a]?\.\w+$', '', filename)
-                else:
-                    print('NOT_Juliet_or_KDM_Test_Case')
-                    continue
-
-                test_case_files.append(filename)
-
-                # todo: finish adding to vendor input sheet
-                # used_wid_list.append([cwe_no, group])
-                # de_duped_used_wid_list = remove_dups(used_wid_list)
-
-    '''
-    # copy file names for all hits
-    juliet_f_tc_hits_deduped = [i[0] for i in juliet_f_tc_hits]
-    juliet_f_tc_hits_deduped = set(juliet_f_tc_hits_deduped)
-
-    # determine how many hits each file has
-    for file in juliet_f_tc_hits_deduped:
-        i, j = 0, 0
-        # Count the number of hits each file received
-        for file2 in juliet_f_tc_hits:
-            if file2[0] == file:
-                oc_count = file2[1]
-                # each file will be given credit for a hit but only up to the number of 'FIX:'s (OC)s in the test case
-                print('oc_count', oc_count)
-                if oc_count > i:
-                    i += 1  # used
-                    j += 1
-                else:
-                    j += 1  # actual
-                    print("COUNT_EXCEEDED_OC")
-
-        print("FILE:-----", file, "HITS:-----", i, "OC:-----", oc_count)
-        op_sheet_list.append([str(file), str(j), str(i), str(oc_count)])
-
-    collect_hit_data(op_sheet_list)
-   '''
-
-    # get the unique hits for each file variant
-    if juliet_f_tc_type:
-        juliet_f_tc_hits_deduped = dedup_multi_dim_list(juliet_f_tc_hits)
-        score = len(juliet_f_tc_hits_deduped)
-    # get the unique hits for each set of test case files
-    else:
-        score = len(set(test_case_files))
-
-    # return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, opps_per_test_case
-    return score, de_duped_used_wid_list, juliet_f_tc_hits_deduped, juliet_f_testcase_path
 
 
 def get_opp_counts_per_test_case(juliet_test_case_path):
@@ -1454,38 +748,6 @@ def get_opp_counts_per_test_case(juliet_test_case_path):
                             #             print
                             #             'found at line:', num
                             # $$$$$$$$$$$$$$$$$$$$
-
-                # get test case name by removing variant and file extension
-                test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-                test_case_full_path = os.path.join(root, test_case_name)
-
-                # if test case name not in the list, add it
-                if opp_counts.get(test_case_full_path, 'None') == 'None':
-                    opp_counts.update({test_case_full_path: opp_count})
-
-                # if test case name is in the list, add this new value to the existing value
-                else:
-                    current_value = opp_counts[test_case_full_path]
-                    updated_value = opp_count + current_value
-                    opp_counts.update({test_case_full_path: updated_value})
-
-    # return opp counts by test case name
-    return opp_counts  # todo: consider sorting these for speed?
-
-
-def get_opp_counts_per_test_case_ORIGINAL(juliet_test_case_path):
-    opp_counts = {}
-
-    # for root, dirs, files in os.walk(juliet_tc_path_f):
-    for root, dirs, files in os.walk(juliet_test_case_path):
-
-        for file in files:
-            opp_count = 0
-            if file.endswith(".c"):
-                with open(os.path.join(root, file), 'r') as inF:
-                    for line in inF:
-                        if 'FIX' in line:
-                            opp_count += 1
 
                 # get test case name by removing variant and file extension
                 test_case_name = re.sub("[a-z]?\.\w+$", "", file)
@@ -1536,43 +798,6 @@ def get_opp_counts_per_file(file_path):
     return opp_counts  # consider sorting these for speed?
 
 
-def opp_counts_by_file_ORIGINAL(project_path):  # todo: argument = project path
-
-    opp_counts = {}
-    # opp_counts.clear() to delete all
-
-    suite_path = os.getcwd()
-
-    # keep for now since this gets all test cases
-    # juliet_tc_path_f = suite_path + "\\" + "juliet\F"
-
-    juliet_tc_path_f = os.path.join(suite_path + "\\juliet\\" + project_path)
-
-    for root, dirs, files in os.walk(juliet_tc_path_f):
-
-        for file in files:
-            opp_count = 0
-            if file.endswith(".c"):
-                with open(root + "\\" + file, 'r') as inF:
-                    for line in inF:
-                        if 'FIX' in line:
-                            opp_count += 1
-
-                # test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-
-                # testcase name and opp count to list or update if already there
-                if (opp_counts.get(file, 'None') == 'None'):
-                    opp_counts.update({file: opp_count})
-                else:
-                    current_value = opp_counts[file]
-                    updated_value = opp_count + current_value
-                    opp_counts.update({file: updated_value})
-                    # print("updated_value", file, updated_value)
-
-    # return opp counts by test case name
-    return opp_counts  # consider sorting these for speed?
-
-
 def remove_dups(d):
     new_d = []
     for x in d:
@@ -1601,7 +826,7 @@ def write_details(suite_data_details):
         ws2.cell(row=1, column=idx + 1).value = title
         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
-    # write detailed data
+    # write xml data
     for j, attrib in enumerate(attribute_list):
         for i, xml_data in enumerate(suite_data_details.xml_projects):
             # juliet or kdm
@@ -1651,49 +876,6 @@ def write_details(suite_data_details):
                 ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="left")
             else:
                 ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
-
-
-def write_details_ORIGINAL(scan_data):
-    #########################################################################################################
-    detail_sheet_titles = ['CWE', 'Type', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'T/F', 'RAW Project File']
-    #########################################################################################################
-
-    row = 1
-
-    # perform multi-column sorts
-    scan_data.sort(key=sort)
-
-    # freeze first row and column
-    ws2.freeze_panes = ws2['B2']
-
-    # write column headers
-    for idx, title in enumerate(detail_sheet_titles):
-        set_appearance(ws2, row, idx + 1, 'fg_fill', 'F4B084')
-        ws2.cell(row=1, column=idx + 1).value = title
-        ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    for data in scan_data:
-
-        row += 1
-
-        # write data to sheets
-        for idx, data_id in enumerate(data):
-            ws2.cell(row=row, column=idx + 1).value = data_id
-
-            set_appearance(ws2, row, idx + 1, 'fg_fill', 'FFFFFF')
-            ws2.cell(row=row, column=2).alignment = Alignment(horizontal="right")
-
-        # set appearance & style
-        if data[3] > 0:  # if hits > 0
-            if data[7] == "TRUE":  # if true
-                set_appearance(ws2, row, 4, 'font_color', '548235')
-                set_appearance(ws2, row, 5, 'font_color', '548235')
-            if data[7] == "FALSE":  # if false
-                set_appearance(ws2, row, 4, 'font_color', 'C00000')
-                set_appearance(ws2, row, 5, 'font_color', 'C00000')
-        else:  # no hits
-            set_appearance(ws2, row, 4, 'fg_fill', 'D9D9D9')
-            set_appearance(ws2, row, 5, 'fg_fill', 'D9D9D9')
 
 
 def write_summary(scan_data):
@@ -1832,37 +1014,6 @@ def create_summary_chart():
     ws1.add_chart(chart1, 'H2')
 
 
-def write_opp_counts_to_sheet(suite_dat):
-    test_case_files_and_line_that_hit = []
-
-    for xml_project in suite_dat.xml_projects:
-        test_case_files_and_line_that_hit.append(getattr(xml_project, 'test_case_files_and_line_that_hit'))
-
-
-        # for idx, file in enumerate(test_case_files_and_line_that_hit):
-        #     # file_name = str(file[0])
-        #     # line_no = str(file[1])
-        #
-        #     file_name = file[idx][0]
-        #     line_no = file[idx][1]
-        #
-        #     test_case_files_and_line_that_hit.append([file_name, line_no])
-
-    collect_hit_data(test_case_files_and_line_that_hit)
-
-
-def write_opp_counts_to_sheet_ORIGINAL(juliet_f_hits):
-    op_sheet_list = []
-
-    for file in juliet_f_hits:
-        file_name = str(file[0])
-        line_no = str(file[1])
-
-        op_sheet_list.append([file_name, line_no])
-
-    collect_hit_data(op_sheet_list)
-
-
 def dedup_multi_dim_list(mylist):
     seen = set()
     newlist = []
@@ -1911,17 +1062,7 @@ def remove_duplicates(numbers):
     return newlist
 
 
-def flatten(lis):
-    for item in lis:
-        if isinstance(item, Iterable) and not isinstance(item, basestring):
-            for x in flatten(item):
-                yield x
-        else:
-            yield item
-    return lis
-
-
-def paint_used_wids(used_wids, unused_wids):
+def paint_wids_usage(used_wids, unused_wids):
     # key = cwe
     key = list(used_wids)[0]
     key = int(key[3:].lstrip('0'))
@@ -1955,55 +1096,6 @@ def paint_used_wids(used_wids, unused_wids):
                     if value == cell.value:
                         # red
                         set_appearance(ws, cell.row, cell.col_idx, 'fg_fill', 'E6B8B7')
-
-
-
-
-    # for row_idx in ws.iter_rows():
-    #     col = 1
-    #     row = row_idx[col].row
-    #     if row > 1:
-    #         for
-    #         print('ROW', row, 'COL', col, 'VALUE', row_idx[col].value)
-    #         col+=1
-
-    # row_idx = 1
-    # for row in ws.iter_rows():
-    #     col_idx = 1
-    #     if row_idx > 1:
-    #         for cell in row:
-    #             print('ROW', row_idx, 'COL', col_idx, cell.value)
-    #             col_idx+=1
-    #     row_idx+=1
-
-    '''
-    row_idx = 1
-    for row in ws.iter_rows():
-        found = False
-        col_idx = 1
-        if row_idx > 1:
-            for cell in row:
-
-                for used_wid in suite_dat.used_wids_per_cwe:
-                    if col_idx == 1 and used_wid[col_idx - 1] == 'CWE' + str(cell.value).zfill(3):
-                        print('CWEs MATCH', used_wid[col_idx - 1], cell.value)
-                        found = True
-
-                    if found:
-                        used_wid = ''.join(used_wid[1])
-                        print('CWE_MATCH---------------ROW', row_idx, 'COL', col_idx, 'CELL_VAL=', cell.value,
-                              'USED_WID=', used_wid)
-                        if cell.value == used_wid:
-                            print('WIDs_MATCH-------------', 'CELL_VAL=', cell.value, 'USED_WID=', used_wid)
-                            # green
-                            set_appearance(ws, row_idx, col_idx, 'fg_fill', 'A9D08E')
-                            # else:
-                            #     # red
-                            #     set_appearance(ws, row_idx, col_idx, 'fg_fill', 'E6B8B7')
-
-                col_idx += 1
-        row_idx += 1
-    '''
 
 
 def get_unused_wids(scan_data, used_wids):
@@ -2052,49 +1144,12 @@ def get_used_wids(scan_data):
 
         scan_data.used_wids_per_cwe.append([cwe, unique_used_wids_per_cwe])
 
-        ############## new ##############
         # todo: consider appending this dict like the list
         # scan_data.used_wids_per_cwe_dict = {cwe:unique_used_wids_per_cwe}
         used_wids = {cwe: unique_used_wids_per_cwe}
         unused_wids = get_unused_wids(scan_data, used_wids)
 
-        paint_used_wids(used_wids, unused_wids)
-
-
-
-def get_used_wids_1(scan_data):
-    cwes = []
-
-    for xml_project in scan_data.xml_projects:
-        cwes.append(getattr(xml_project, 'cwe_id_padded'))
-    unique_cwes = list(set(cwes))
-    unique_cwes.sort()  # todo: dont think this is necessary
-
-    for cwe in unique_cwes:
-
-        used_wids_per_cwe = []
-        new_list2 = []
-
-        # go thru each project looking for this cwe
-        for xml_project in suite_data.xml_projects:
-
-            # if the cwe for this project matches, get it's wids
-            if cwe == getattr(xml_project, 'cwe_id_padded'):
-                used_wids_per_cwe.append(getattr(xml_project, 'used_wids'))
-                # put all of the pieces into a single dimension array
-                for wid in used_wids_per_cwe:
-                    new_list2.append(wid)
-            else:
-                continue
-
-        new_list2 = [item for sublist in new_list2 for item in sublist]
-        new_list2 = list(set(new_list2))
-        updated_list = getattr(scan_data, 'used_wids_per_cwe')
-
-        updated_list.append([cwe, new_list2])
-
-        setattr(scan_data, 'used_wids_per_cwe', updated_list)
-        # todo: paint the vendor input wids if found (or not found)
+        paint_wids_usage(used_wids, unused_wids)
 
 
 def githash():
@@ -2143,18 +1198,14 @@ if __name__ == '__main__':
     # todo: 5/6/7 create argument for all files in the project
     git_hash = githash()
 
-
     # add sheets and format
     wb = load_workbook(scorecard)
     ws1 = wb.create_sheet('Summary', 0)
-    ws2 = wb.create_sheet('Detailed Data', 1)
-    ws3 = wb.create_sheet('Opportunity Counts', 2)
+    ws2 = wb.create_sheet('XML Data', 1)
+    ws3 = wb.create_sheet('Hit Data', 2)
     ws4 = wb.create_sheet('Analytics', 3)
 
     format_workbook()
-
-    # get scan data and save it to the new xml path
-    #data = get_data(scaned_data_path, new_xml_path)
 
     # instanciate a suite object and get suite data
     suite_data = Suite(scaned_data_path, new_xml_path, TOOL_NAME)
@@ -2169,7 +1220,7 @@ if __name__ == '__main__':
     get_used_wids(suite_data)
 
     # write to sheets
-    collect_hit_data(suite_data)  # todo: 5/5/7 moved this here
+    collect_hit_data(suite_data)
     write_details(suite_data)
     write_summary(suite_data)
     create_summary_chart()

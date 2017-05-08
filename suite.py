@@ -103,6 +103,7 @@ class Xml(object):
 
         print('PROJECT FILE---', self.scan_data_file)
 
+
 class Suite(object):
     def __init__(self, source_path, dest_path, tool_name):
         self.source_path = source_path
@@ -129,7 +130,6 @@ class Suite(object):
         self.acceptable_weakness_ids_full_list_dict = {}
         self.used_wids_per_cwe = []
         self.used_wids_per_cwe_dict = {}
-
 
         # auto-run methods on creation
         self.create_xml_dir()
