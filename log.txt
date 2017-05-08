@@ -1,5 +1,7 @@
-[Sun May  7 16:35:16 2017] --- STARTED SCORING ---
-[Sun May  7 16:35:16 2017] C:\01\xmls already exists. Cleaning before use...
+pydev debugger: process 4828 is connecting
+
+[Mon May  8 08:33:08 2017] --- STARTED SCORING ---
+[Mon May  8 08:33:09 2017] C:\01\xmls already exists. Cleaning before use...
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s01.fpr
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s02.fpr
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s03.fpr
@@ -2956,94 +2958,7 @@ XML C:\01\xmls\CWE843_F_juliet.xml
 SCORE: 0
 XML C:\01\xmls\CWE843_T_juliet.xml
 SCORE: 20
-sheet_wid Input Validation and Representation:Command Injection
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE078', ['Input Validation and Representation:Command Injection']]
-sheet_wid Input Validation and Representation:Command Injection
-sheet_wid Input Validation and Representation:Command Injection
-sheet_wid Input Validation and Representation:LDAP Injection
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE090', ['Input Validation and Representation:LDAP Injection']]
-sheet_wid Input Validation and Representation:LDAP Injection
-sheet_wid Input Validation and Representation:LDAP Injection
-sheet_wid Input Validation and Representation:LDAP Injection
-sheet_wid Input Validation and Representation:Buffer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE121', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Format String
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE121', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Off-by-One
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE121', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE122', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Off-by-One
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE122', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Format String
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE122', ['Input Validation and Representation:Buffer Overflow:Off-by-One', 'Input Validation and Representation:Buffer Overflow', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Out-of-Bounds Read:Off-by-One
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE126', ['Input Validation and Representation:Out-of-Bounds Read:Off-by-One']]
-sheet_wid Format String: Argument Number Mismatch
-sheet_wid Input Validation and Representation:Format String
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE134', ['Input Validation and Representation:Format String', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Format String
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE134', ['Input Validation and Representation:Format String', 'Input Validation and Representation:Buffer Overflow:Format String']]
-sheet_wid Often Misused: Strings
-sheet_wid Input Validation and Representation:Buffer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE188', ['Input Validation and Representation:Buffer Overflow']]
-sheet_wid Insecure Deployment: HTTP.sys
-sheet_wid Integer Overflow
-sheet_wid Input Validation and Representation:Out-of-Bounds Read:Signed Comparison
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE194', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Input Validation and Representation:Integer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE194', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Signed Comparison
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE194', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Input Validation and Representation:Integer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE195', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Input Validation and Representation:Out-of-Bounds Read:Signed Comparison
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE195', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Input Validation and Representation:Buffer Overflow:Signed Comparison
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE195', ['Input Validation and Representation:Out-of-Bounds Read:Signed Comparison', 'Input Validation and Representation:Buffer Overflow:Signed Comparison', 'Input Validation and Representation:Integer Overflow']]
-sheet_wid Buffer Overflow: Signed Comparison
-sheet_wid Type Mismatch: Negative to Unsigned
-sheet_wid API Abuse:Dangerous Function
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE242', ['API Abuse:Dangerous Function']]
-sheet_wid Time and State:Insecure Temporary File
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE377', ['Time and State:Insecure Temporary File']]
-sheet_wid Weak XML Schema: Unbounded Occurrences
-sheet_wid Code Quality:Memory Leak
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE401', ['Code Quality:Memory Leak', 'Code Quality:Memory Leak:Reallocation']]
-sheet_wid Code Quality:Memory Leak:Reallocation
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE401', ['Code Quality:Memory Leak', 'Code Quality:Memory Leak:Reallocation']]
-sheet_wid Code Quality:Unreleased Resource
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE404', ['Code Quality:Unreleased Resource']]
-sheet_wid Code Quality:Double Free
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE415', ['Code Quality:Double Free']]
-sheet_wid Code Quality:Use After Free
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE416', ['Code Quality:Use After Free']]
-sheet_wid Input Validation and Representation:Command Injection
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE426', ['Input Validation and Representation:Command Injection']]
-sheet_wid Code Quality:Uninitialized Variable
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE457', ['Code Quality:Uninitialized Variable']]
-sheet_wid Input Validation and Representation:Out-of-Bounds Read
-sheet_wid Undefined Behavior
-sheet_wid Code Quality:Null Dereference
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE476', ['Code Quality:Redundant Null Check', 'Code Quality:Null Dereference']]
-sheet_wid Code Quality:Redundant Null Check
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE476', ['Code Quality:Redundant Null Check', 'Code Quality:Null Dereference']]
-sheet_wid Code Correctness: Function Returns Stack Address
-sheet_wid Code Quality:Code Correctness:Memory Free on Stack Variable
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE590', ['Code Quality:Code Correctness:Memory Free on Stack Variable']]
-sheet_wid String Termination Error
-sheet_wid Input Validation and Representation:Integer Overflow
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE680', ['Input Validation and Representation:Integer Overflow']]
-sheet_wid API Abuse:Missing Check against Null
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE690', ['API Abuse:Missing Check against Null']]
-sheet_wid Code Quality:Memory Leak
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE761', ['Code Quality:Memory Leak']]
-sheet_wid Code Quality:Unreleased Resource
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE773', ['Code Quality:Unreleased Resource']]
-sheet_wid Code Quality:Unreleased Resource
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE775', ['Code Quality:Unreleased Resource']]
-sheet_wid API Abuse:Often Misused:File System
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE785', ['API Abuse:Often Misused:File System']]
-sheet_wid Input Validation and Representation:Out-of-Bounds Read:Off-by-One
-MATCH_FOUND_FOR^^^^^^^^^^^^ ['CWE843', ['Input Validation and Representation:Out-of-Bounds Read:Off-by-One']]
-[Sun May  7 16:39:46 2017] --- FINISHED SCORING ---
+CWEs MATCH CWE078 78
+CWE_MATCH---------------ROW 2 COL 1 CELL_VAL= 78 USED_WID= Input Validation and Representation:Command Injection
+CWE_MATCH---------------ROW 2 COL 1 CELL_VAL= 78 USED_WID= Input Validation and Representation:LDAP Injection
+CWE_MATCH---------------ROW 2 COL 1 CELL_VAL= 78 USED_WID= Input Validation and Representation:Buffer Overflow:Format StringInput Validation and Representation:Buffer Overflow:Off-by-OneInput Validation and Representation:Buffer Overflow

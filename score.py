@@ -84,7 +84,7 @@ def format_workbook():
     ws3.column_dimensions['K'].width = 12
     ws3.column_dimensions['L'].width = 12
     ws3.column_dimensions['M'].width = 12
-    ws3.sheet_view.zoomScale = 80
+    ws3.sheet_view.zoomScale = 70
     ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws3.sheet_view.showGridLines = False
     # freeze first row and column
@@ -1925,28 +1925,87 @@ def paint_used_wids(suite_dat):
 
     ws = wb.get_sheet_by_name('Weakness IDs')
 
-    # iterate thru each row
-    for row_idx in ws.iter_rows():
+    # for row_idx in ws.iter_rows():
+    #     col = 1
+    #     row = row_idx[col].row
+    #     if row > 1:
+    #         for
+    #         print('ROW', row, 'COL', col, 'VALUE', row_idx[col].value)
+    #         col+=1
 
-        # go thru all used wids
-        for used_wid in suite_dat.used_wids_per_cwe:
+    # row_idx = 1
+    # for row in ws.iter_rows():
+    #     col_idx = 1
+    #     if row_idx > 1:
+    #         for cell in row:
+    #             print('ROW', row_idx, 'COL', col_idx, cell.value)
+    #             col_idx+=1
+    #     row_idx+=1
 
-            col = 0
 
-            # check col=0 of each list for a matching cwe
-            if str(row_idx[col].value) in used_wid[col][3:]:
 
-                for sheet_wid in row_idx:
 
-                    if col > 0 and sheet_wid.value is not None:
 
-                        print('sheet_wid', sheet_wid.value)
 
-                        for wid in used_wid:
-                            if sheet_wid.value in wid:
-                                print('MATCH_FOUND_FOR^^^^^^^^^^^^', used_wid)
-                                set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'A9D08E')
-                    col += 1
+
+    row_idx = 1
+    for row in ws.iter_rows():
+        found = False
+        col_idx = 1
+        if row_idx > 1:
+            for cell in row:
+
+                for used_wid in suite_dat.used_wids_per_cwe:
+                    if col_idx == 1 and used_wid[col_idx - 1] == 'CWE' + str(cell.value).zfill(3):
+                        print('CWEs MATCH', used_wid[col_idx - 1], cell.value)
+                        found = True
+
+                    if found:
+                        used_wid = ''.join(used_wid[1])
+                        print('CWE_MATCH---------------ROW', row_idx, 'COL', col_idx, 'CELL_VAL=', cell.value,
+                              'USED_WID=', used_wid)
+                        if cell.value == used_wid:
+                            print('WIDs_MATCH-------------', 'CELL_VAL=', cell.value, 'USED_WID=', used_wid)
+                            # green
+                            set_appearance(ws, row_idx, col_idx, 'fg_fill', 'A9D08E')
+                            # else:
+                            #     # red
+                            #     set_appearance(ws, row_idx, col_idx, 'fg_fill', 'E6B8B7')
+
+                col_idx += 1
+        row_idx += 1
+
+
+
+
+
+        # # iterate thru each row
+        # for row_idx in ws.iter_rows():
+        #
+        #     # go thru all used wids
+        #     for used_wid in suite_dat.used_wids_per_cwe:
+        #
+        #         # check col=0 of each list for a matching cwe
+        #         if used_wid[0][3:] == str(row_idx[0].value):
+        #
+        #             col = 1
+        #
+        #             for sheet_wid in row_idx:
+        #
+        #                 if sheet_wid.value is not None:
+        #
+        #
+        #                     for wid in used_wid[1]:
+        #                         if [sheet_wid.value] == wid:
+        #                             print('FOUND^^^^^^^^^^^^', used_wid)
+        #                             # green
+        #                             set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'A9D08E')
+        #                         else:
+        #                             # red
+        #                             set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'E6B8B7')
+        #                             print('NOT_FOUND^^^^^^^^^^^^', used_wid)
+        #
+        #                     col += 1
 
 
 def get_used_wids(scan_data):
