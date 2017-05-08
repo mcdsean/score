@@ -96,6 +96,7 @@ class Xml(object):
         self.percent_hits = 0
         self.tc_path = ''
         self.acceptable_weakness_ids = []
+        self.acceptable_weakness_ids_dict = {}
         self.used_wids = []
         # list of test case objects
         self.test_cases = []
@@ -125,7 +126,10 @@ class Suite(object):
 
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
+        self.acceptable_weakness_ids_full_list_dict = {}
         self.used_wids_per_cwe = []
+        self.used_wids_per_cwe_dict = {}
+
 
         # auto-run methods on creation
         self.create_xml_dir()
@@ -247,7 +251,7 @@ class Suite(object):
 
             for root in root_list:
                 if all(x in root for x in key_list):
-                    print('TC PATH FOUND----------', root)
+                    # print('TC PATH FOUND----------', root)
                     tc_path = root.replace(os.getcwd(), '')[1:]
                     setattr(self.xml_projects[i], 'tc_path', tc_path)
                     project_id = i

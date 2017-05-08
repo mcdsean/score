@@ -1921,9 +1921,43 @@ def flatten(lis):
     return lis
 
 
-def paint_used_wids(suite_dat):
+def paint_used_wids(used_wids, unused_wids):
+    # key = cwe
+    key = list(used_wids)[0]
+    key = int(key[3:].lstrip('0'))
+
+    # values = used wids
+    values = list(used_wids.values())[0]
+    unused_wid_values = list(unused_wids.values())[0]
 
     ws = wb.get_sheet_by_name('Weakness IDs')
+
+    for row in ws.iter_rows():
+
+        found_row = False
+        for cell in row:
+
+            # look for matching cwe row in sheet
+            if key == cell.value:
+                print('CWE_ID_ROW', cell.row, 'COL', cell.col_idx, cell.value)
+                found_row = True
+                continue
+
+            if found_row:
+                print('WID_ID', cell.row, 'COL', cell.col_idx, cell.value)
+                # highlight all used wids green
+                for value in values:
+                    if value == cell.value:
+                        # green = used
+                        set_appearance(ws, cell.row, cell.col_idx, 'fg_fill', 'A9D08E')
+
+                for value in unused_wid_values:
+                    if value == cell.value:
+                        # red
+                        set_appearance(ws, cell.row, cell.col_idx, 'fg_fill', 'E6B8B7')
+
+
+
 
     # for row_idx in ws.iter_rows():
     #     col = 1
@@ -1942,12 +1976,7 @@ def paint_used_wids(suite_dat):
     #             col_idx+=1
     #     row_idx+=1
 
-
-
-
-
-
-
+    '''
     row_idx = 1
     for row in ws.iter_rows():
         found = False
@@ -1974,38 +2003,27 @@ def paint_used_wids(suite_dat):
 
                 col_idx += 1
         row_idx += 1
+    '''
 
 
+def get_unused_wids(scan_data, used_wids):
+    acceptable_wids = {}
 
+    cwe = list(used_wids)[0]
+    cwe = cwe[3:].lstrip('0')
 
+    for weak_id in scan_data.acceptable_weakness_ids_full_list:
+        if weak_id[0] == cwe:
+            del weak_id[0]
+            acceptable_wids = {cwe: weak_id}
 
-        # # iterate thru each row
-        # for row_idx in ws.iter_rows():
-        #
-        #     # go thru all used wids
-        #     for used_wid in suite_dat.used_wids_per_cwe:
-        #
-        #         # check col=0 of each list for a matching cwe
-        #         if used_wid[0][3:] == str(row_idx[0].value):
-        #
-        #             col = 1
-        #
-        #             for sheet_wid in row_idx:
-        #
-        #                 if sheet_wid.value is not None:
-        #
-        #
-        #                     for wid in used_wid[1]:
-        #                         if [sheet_wid.value] == wid:
-        #                             print('FOUND^^^^^^^^^^^^', used_wid)
-        #                             # green
-        #                             set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'A9D08E')
-        #                         else:
-        #                             # red
-        #                             set_appearance(ws, row_idx[col].row, col + 1, 'fg_fill', 'E6B8B7')
-        #                             print('NOT_FOUND^^^^^^^^^^^^', used_wid)
-        #
-        #                     col += 1
+    used_values = list(used_wids.values())[0]
+    acceptable_wids = list(acceptable_wids.values())[0]
+    unused_wids = list(set(acceptable_wids) - set(used_values))
+    if 'None' in unused_wids:
+        unused_wids.remove('None')
+
+    return {cwe: unused_wids}
 
 
 def get_used_wids(scan_data):
@@ -2031,7 +2049,17 @@ def get_used_wids(scan_data):
                 continue
 
         unique_used_wids_per_cwe = list(set(used_wids_per_cwe))
+
         scan_data.used_wids_per_cwe.append([cwe, unique_used_wids_per_cwe])
+
+        ############## new ##############
+        # todo: consider appending this dict like the list
+        # scan_data.used_wids_per_cwe_dict = {cwe:unique_used_wids_per_cwe}
+        used_wids = {cwe: unique_used_wids_per_cwe}
+        unused_wids = get_unused_wids(scan_data, used_wids)
+
+        paint_used_wids(used_wids, unused_wids)
+
 
 
 def get_used_wids_1(scan_data):
@@ -2139,8 +2167,6 @@ if __name__ == '__main__':
     score_xmls(suite_data)
     # get a summary of all used wids
     get_used_wids(suite_data)
-
-    paint_used_wids(suite_data)
 
     # write to sheets
     collect_hit_data(suite_data)  # todo: 5/5/7 moved this here
