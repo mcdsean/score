@@ -92,9 +92,9 @@ def format_workbook():
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
     #ws3.sheet_properties.tabColor = "E6B8B7"
-    # write column headers
+    # write column headers # todo: 5/9/7 repeat this technique for other headers
     for idx, title in enumerate(hit_sheet_titles):
-        set_appearance(ws3, 1, idx + 1, 'fg_fill', 'A9D08E')
+        set_appearance(ws3, 1, idx + 1, 'fg_fill', 'C9C9C9')
         ws3.cell(row=1, column=idx + 1).value = title
         ws3.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
@@ -545,22 +545,18 @@ def collect_hit_data(suite_dat):
                 # add to composite list for writing to ws3
                 hit_data.append(hit_data_columns)
 
-            ############################
             # todo: 5/5/7 NEW, needs verified
             if xml_project.tc_type == 'juliet' and xml_project.true_false == 'FALSE':
                 xml_project.num_of_hits += test_case_obj.score
                 xml_project.tc_count += test_case_obj.opp_counts
         xml_project.percent_hits = str(round((xml_project.num_of_hits / xml_project.tc_count) * 100, 1)) + ' '
 
-        # score = xml_project.num_of_hits
-        # tc_count = xml_project.tc_count
-        # #setattr(xml_project, 'num_of_hits', score) # todo: 5/5/7 does not look like we need this
-        # print('NEW_JULIET_FALSE_SCORE', xml_project.new_xml_name, score)
-        ############################
+        print('Collecting Hit Data for:', xml_project.new_xml_name)
 
     # sort hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
+    print('Writing hit data to sheet ... please stand by, thank you for your patience!')
     write_hit_data(suite_dat, hit_data)
 
 
@@ -806,7 +802,7 @@ def remove_dups(d):
     return new_d
 
 
-def write_details(suite_data_details):
+def write_xml_data(suite_data_details):
 
     #########################################################################################################
     detail_sheet_titles = ['CWE', 'Type', 'T/F', 'TC', 'Hits', '%Hits', 'XML', 'TC Path', 'RAW Project File']
@@ -822,7 +818,7 @@ def write_details(suite_data_details):
 
     # write column headers
     for idx, title in enumerate(detail_sheet_titles):
-        set_appearance(ws2, row, idx + 1, 'fg_fill', 'F4B084')
+        set_appearance(ws2, row, idx + 1, 'fg_fill', 'C9C9C9')
         ws2.cell(row=1, column=idx + 1).value = title
         ws2.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
 
@@ -878,7 +874,7 @@ def write_details(suite_data_details):
                 ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
 
 
-def write_summary(scan_data):
+def write_summary_data(scan_data):
 
     #########################################################################################################
     summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
@@ -958,19 +954,22 @@ def write_summary(scan_data):
         ws1.cell(row=row, column=5).number_format = '#,##0'
         ws1.cell(row=row, column=7).number_format = '0.00'
 
-    # todo: 5/6/7 manual review notice needs auto insert from ws3
-    # manual review notification
-    ws1.cell(row=32, column=8).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=32, start_column=8, end_row=32, end_column=29)
-    ws1.cell(row=32, column=8).value = '  * There are no test cases requiring manual review!'
-    cell = ws1['H32']
-    set_appearance(ws1, 32, 8, 'font_color', '548235', False)
-    cell.font = cell.font.copy(bold=False, italic=True)
-
     # revision with git hash
     ws1.cell(row=1, column=8).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=29)
-    ws1.cell(row=1, column=8).value = ' v2.0_' + git_hash[:7]  # todo: short hash? or long?
+    ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=10)
+    ws1.cell(row=1, column=8).value = '  score.exe, rev. v2.0.' + git_hash[:7]  # todo: keep short hash? or long?
+    set_appearance(ws1, 1, 8, 'font_color', 'BFBFBF')
+    cell = ws1['H1']
+    cell.font = cell.font.copy(bold=False, italic=True)
+
+    # todo: 5/6/7 manual review notice needs auto insert from ws3
+    # manual review notification
+    ws1.cell(row=1, column=11).alignment = Alignment(horizontal="left", vertical='center')
+    ws1.merge_cells(start_row=1, start_column=11, end_row=1, end_column=29)
+    ws1.cell(row=1, column=11).value = '  * There are no test cases requiring manual review!'
+    set_appearance(ws1, 1, 11, 'font_color', '548235')
+    cell = ws1['K1']
+    cell.font = cell.font.copy(bold=False, italic=True)
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
@@ -990,28 +989,50 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
         cell.border = thin_border
 
 
-def create_summary_chart():
-    chart1 = BarChart()
-    chart1.type = 'col'
-    chart1.style = 11
-    chart1.y_axis.title = 'Score'
-    chart1.x_axis.title = 'CWE Number'
-    data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
+def create_summary_charts():
+    # recall
+    p_and_r_chart = BarChart()
+    p_and_r_chart.type = 'col'
+    p_and_r_chart.style = 11
+    p_and_r_chart.y_axis.title = 'Precision & Recall'
+    p_and_r_chart.x_axis.title = 'CWE Number'
+    recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
     cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    chart1.add_data(data, titles_from_data=True)
-    chart1.set_categories(cats)
-    chart1.shape = 4
-    chart1.title = 'Protection Profile Scores'
-    auto_axis = True
-    chart1.y_axis.scaling.min = 0
-    chart1.y_axis.scaling.max = 1
-    # chart1.height = 15
-    # chart1.width = 45
-    chart1.height = 15
-    chart1.width = 40
-    # chart1.set_x_axis({'num_font':  {'rotation': 270}})
+    p_and_r_chart.add_data(recall_data, titles_from_data=True)
+    p_and_r_chart.set_categories(cats)
+    p_and_r_chart.shape = 4
+    p_and_r_chart.title = 'Protection Profile Scores (Precision & Recall)'
+    # auto_axis = True
+    p_and_r_chart.y_axis.scaling.min = 0
+    p_and_r_chart.y_axis.scaling.max = 1
+    # p_and_r_chart.height = 15
+    # p_and_r_chart.width = 45
+    p_and_r_chart.height = 15
+    p_and_r_chart.width = 40
+    # p_and_r_chart.set_x_axis({'num_font':  {'rotation': 270}})
+    ws1.add_chart(p_and_r_chart, 'H2')
 
-    ws1.add_chart(chart1, 'H2')
+    # precision
+    p_chart = BarChart()
+    p_chart.type = 'col'
+    p_chart.style = 11
+    p_chart.y_axis.title = 'Precision'
+    p_chart.x_axis.title = 'CWE Number'
+    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    p_chart.add_data(precision_data, titles_from_data=True)
+    p_chart.set_categories(cats)
+    p_chart.shape = 4
+    p_chart.title = 'Protection Profile Scores'
+    # auto_axis = True
+    p_chart.y_axis.scaling.min = 0
+    p_chart.y_axis.scaling.max = 1
+    # p_chart.height = 15
+    # p_chart.width = 45
+    p_chart.height = 15
+    p_chart.width = 40
+    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
+    ws1.add_chart(p_chart, 'H33')
 
 
 def dedup_multi_dim_list(mylist):
@@ -1204,6 +1225,7 @@ if __name__ == '__main__':
     ws2 = wb.create_sheet('XML Data', 1)
     ws3 = wb.create_sheet('Hit Data', 2)
     ws4 = wb.create_sheet('Analytics', 3)
+    ws5 = wb.create_sheet('SCORE', 4)
 
     format_workbook()
 
@@ -1221,9 +1243,9 @@ if __name__ == '__main__':
 
     # write to sheets
     collect_hit_data(suite_data)
-    write_details(suite_data)
-    write_summary(suite_data)
-    create_summary_chart()
+    write_xml_data(suite_data)
+    write_summary_data(suite_data)
+    create_summary_charts()
 
     wb.active = 0
     wb.save(scorecard)

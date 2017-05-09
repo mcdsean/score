@@ -130,6 +130,7 @@ class Suite(object):
         self.acceptable_weakness_ids_full_list_dict = {}
         self.used_wids_per_cwe = []
         self.used_wids_per_cwe_dict = {}
+        self.manual_review_recommendataion = ''
 
         # auto-run methods on creation
         self.create_xml_dir()
