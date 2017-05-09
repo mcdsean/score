@@ -576,7 +576,7 @@ def write_hit_data(suite_dat, hit_data):
 
         for cell in hit:
 
-            # write hit data to ws3
+            # write hit data to cells in ws3
             ws3.cell(row=row + 1, column=col).value = cell
 
             # set the alignment based on column
