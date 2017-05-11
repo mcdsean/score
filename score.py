@@ -40,7 +40,7 @@ def format_workbook():
     ws1.column_dimensions['E'].width = 8
     ws1.column_dimensions['F'].width = 8
     ws1.column_dimensions['G'].width = 8
-    ws1.column_dimensions['H'].width = 21
+    ws1.column_dimensions['H'].width = 22
     ws1.column_dimensions['I'].width = 8
     ws1.column_dimensions['AC'].width = 12
     ws1.sheet_view.zoomScale = 80
@@ -94,8 +94,21 @@ def format_workbook():
     ws4.sheet_view.zoomScale = 80
     ws4.sheet_view.showGridLines = False
     # SCORE
-    ws5.column_dimensions['A'].width = 19
-    ws5.freeze_panes = ws5['A2']
+    ws5.column_dimensions['A'].width = 8
+    ws5.column_dimensions['B'].width = 8
+    ws5.column_dimensions['C'].width = 8
+    ws5.column_dimensions['D'].width = 8
+    ws5.column_dimensions['E'].width = 8
+    ws5.column_dimensions['F'].width = 8
+    ws5.column_dimensions['G'].width = 8
+    ws5.column_dimensions['H'].width = 7
+    ws5.column_dimensions['I'].width = 7
+    ws5.column_dimensions['J'].width = 7
+    ws5.column_dimensions['K'].width = 7
+    ws5.column_dimensions['L'].width = 7
+    ws5.column_dimensions['M'].width = 7
+    ws5.column_dimensions['AC'].width = 12
+    ws5.freeze_panes = ws5['H2']
     ws5.sheet_view.zoomScale = 80
     ws5.sheet_view.showGridLines = False
 
@@ -500,6 +513,7 @@ def calculate_test_case_percent_hits(test_case_obj):
     test_case_obj.percent = percent
 
 
+# todo 5/11/7 pick up here
 def collect_hit_data(suite_dat):
     # file name, line number, and enclosing function
     hit_data = []
@@ -574,7 +588,11 @@ def collect_hit_data(suite_dat):
 
     list_of_dicts = sorted(list_of_dicts, key=itemgetter('name'))
 
+    # write to 'hit analytics' summary sheet
     for idx, hits1 in enumerate(list_of_dicts):
+        if 'helperGood' in hits1['name']:
+            # todo: 5/11/7 log all of these and provide used more specifics w/ location, etc.
+            suite_data.manual_review_recommendataion = ' * Manual Review Required for ' + hits1['name']
         ws4.cell(row=idx + 1, column=1).value = hits1['name']
         ws4.cell(row=idx + 1, column=2).value = hits1['hits']
         ws4.cell(row=idx + 1, column=3).value = hits1['opps']
@@ -916,8 +934,179 @@ def write_xml_data(suite_data_details):
                 ws2.cell(row=i + 2, column=j + 1).alignment = Alignment(horizontal="right")
 
 
-def write_summary_data(scan_data):
+def write_summary_data(scan_data, ws):
 
+    #########################################################################################################
+    summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
+    #########################################################################################################
+
+    row = 1
+    cwes = []
+
+    ws.freeze_panes = ws['H2']
+
+    # write column headers
+    for idx, title in enumerate(summary_sheet_titles):
+        set_appearance(ws, row, idx + 1, 'fg_fill', 'E6B8B7')
+        ws.cell(row=1, column=idx + 1).value = title
+        ws.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    for xml_project in scan_data.xml_projects:
+        cwes.append(getattr(xml_project, 'cwe_id_padded'))
+
+    unique_cwes = list(set(cwes))
+    unique_cwes.sort()
+
+    # collect data for each cwe and summarize
+    for cwe in unique_cwes:
+
+        suite_data.unique_cwes.append(cwe)
+
+        tc_t = tc_f = tp = fp = 0
+        row += 1
+
+        # tally up the results from each xml project
+        for xml_project in scan_data.xml_projects:
+            if cwe == getattr(xml_project, 'cwe_id_padded'):
+                if 'TRUE' == getattr(xml_project, 'true_false'):
+                    tc_t += getattr(xml_project, 'tc_count')
+                    tp += getattr(xml_project, 'num_of_hits')
+                elif 'FALSE' == getattr(xml_project, 'true_false'):
+                    tc_f += getattr(xml_project, 'tc_count')
+                    fp += getattr(xml_project, 'num_of_hits')
+                    # todo: add break or continue to speed this up?
+
+        # for row1 in ws.iter_rows('A1:C2'):
+        for row1 in ws.iter_rows():
+            for cell in row1:
+                if 1 < cell.col_idx < 9:
+                    # highlight if no wid for this cwe
+                    if all(x == 'None' for x in suite_data.acceptable_weakness_ids_full_list_dict[cwe]):
+                        # light blue, no wid provided
+                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'D6DCE4')
+                    elif tp == 0:
+                        # light gray, had at least one wid privided for the cwe, but no hits
+                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'F2F2F2')
+                    else:
+                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'FFFFFF')
+
+                    ws.cell(row=row, column=cell.col_idx - 1).alignment = Alignment(horizontal='right')
+
+        set_appearance(ws, row, 1, 'fg_fill', 'C6C6C6')
+
+        # PRECISION
+        if tp + fp != 0:
+            prec = tp / (tp + fp)
+            ws.cell(row=row, column=6).value = round(prec, 2)
+            ws.cell(row=row, column=6).number_format = '0.00'
+        else:
+            ws.cell(row=row, column=6).value = 'N/A'
+            ws.cell(row=row, column=6).alignment = Alignment(horizontal='right')
+
+        # RECALL
+        recall = tp / tc_t
+
+        # todo: format numbers with commas
+        ws.cell(row=row, column=1).value = cwe
+        ws.cell(row=row, column=2).value = tc_t
+        ws.cell(row=row, column=3).value = tc_f
+        ws.cell(row=row, column=4).value = tp
+        ws.cell(row=row, column=5).value = fp
+        ws.cell(row=row, column=7).value = recall
+        # todo: loop this
+        ws.cell(row=row, column=2).number_format = '#,##0'
+        ws.cell(row=row, column=3).number_format = '#,##0'
+        ws.cell(row=row, column=4).number_format = '#,##0'
+        ws.cell(row=row, column=5).number_format = '#,##0'
+        ws.cell(row=row, column=7).number_format = '0.00'
+
+    # summary sheet
+    if ws == ws1:
+        write_score_and_message_to_summary(ws)
+    # score sheet
+    if ws == ws5:
+        write_weighted_averages(suite_data, ws)
+
+
+def write_weighted_averages(suite_data, ws):
+    #########################################################################################
+    score_sheet_titles_addendum = ['P-Wt.', 'P-Final', 'P-Avg', 'R-Wt.', 'R-Final', 'R-Avg.']
+    #########################################################################################
+
+    row = 1
+    offset = 7
+
+    # write column headers
+    for idx, title in enumerate(score_sheet_titles_addendum):
+        idx += offset
+        set_appearance(ws, row, idx + 1, 'fg_fill', 'E6B8B7')
+        ws.cell(row=1, column=idx + 1).value = title
+        ws.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+    set_cwe_weightings(suite_data)
+
+    for row_idx in ws.iter_rows():
+        for cell in row_idx:
+            if cell.col_idx == 1:
+                if cell.row > 1:
+                    weight = suite_data.weightings_per_cwe_dict[cell.value]
+                    # p-wt.
+                    ws.cell(row=cell.row, column=1 + offset).value = weight
+                    ws.cell(row=cell.row, column=1 + offset).number_format = '0.00'
+                    ws.cell(row=cell.row, column=1 + offset).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, 1 + offset, 'fg_fill', 'DDEBF7')  # light blue
+                    set_appearance(ws, cell.row, 1 + offset, 'font_color', '833C0C')  # dark brown
+                    # r-wt.
+                    ws.cell(row=cell.row, column=4 + offset).value = weight
+                    ws.cell(row=cell.row, column=4 + offset).number_format = '0.00'
+                    ws.cell(row=cell.row, column=4 + offset).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, 4 + offset, 'fg_fill', 'EDEDED')  # light gray
+                    set_appearance(ws, cell.row, 4 + offset, 'font_color', 'C00000')  # dark red
+
+                    # p-final
+                    if row_idx[5].value == 'N/A':
+                        ws.cell(row=cell.row, column=2 + offset).value = 'N/A'
+                        set_appearance(ws, cell.row, 2 + offset, 'font_color', '808080')  # med gray
+                    else:
+                        ws.cell(row=cell.row, column=2 + offset).value = weight * row_idx[5].value
+                        set_appearance(ws, cell.row, 2 + offset, 'font_color', '0000FF')  # med gray
+                        ws.cell(row=cell.row, column=2 + offset).number_format = '0.00'
+
+                    ws.cell(row=cell.row, column=2 + offset).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, 2 + offset, 'fg_fill', 'DDEBF7')  # light blue
+
+
+def set_cwe_weightings(suite_dat):
+    # todo: all set to 1.0 for now
+    for cwe in suite_dat.unique_cwes:
+        suite_dat.weightings_per_cwe_dict[cwe] = 1.0
+
+
+def write_score_and_message_to_summary(ws):
+    # revision with git hash
+    ws.cell(row=1, column=8).alignment = Alignment(horizontal="center", vertical='center')
+    # ws.merge_cells(start_row=1, start_column=8, end_row=1, end_column=10)
+    ws.cell(row=1, column=8).value = ' \'score.exe\', v2.0.' + git_hash[:7]  # todo: keep short hash? or long?
+    set_appearance(ws, 1, 8, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 8, 'fg_fill', 'F2F2F2')  # light gray
+    # pass/fail notification
+    ws.cell(row=1, column=9).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=9).value = suite_data.pass_fail
+    set_appearance(ws, 1, 9, 'font_color', 'FFFFFF')  # white
+    set_appearance(ws, 1, 9, 'fg_fill', '008000')  # green
+    cell = ws['I1']
+    cell.font = cell.font.copy(bold=True, italic=False)
+    # manual review notification
+    ws.cell(row=1, column=10).alignment = Alignment(horizontal="left", vertical='center')
+    ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=29)
+    ws.cell(row=1, column=10).value = suite_data.manual_review_recommendataion
+    set_appearance(ws, 1, 10, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 10, 'fg_fill', 'F2F2F2')  # light gray
+    cell = ws['J1']
+    cell.font = cell.font.copy(bold=False, italic=True)
+
+
+def write_summary_data_ORIGINAL(scan_data):
     #########################################################################################################
     summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
     #########################################################################################################
@@ -1296,6 +1485,7 @@ if __name__ == '__main__':
     import_xml_tags(suite_data)
     # import weakness ids
     import_weakness_ids(suite_data)
+
     # score the xml projects
     score_xmls(suite_data)
     # get a summary of all used wids
@@ -1305,7 +1495,12 @@ if __name__ == '__main__':
     collect_hit_data(suite_data)
     write_xml_data(suite_data)
 
-    write_summary_data(suite_data)
+    # summary sheet
+    write_summary_data(suite_data, ws1)
+    # score sheet
+    write_summary_data(suite_data, ws5)
+
+    # chart for summary sheet
     create_summary_charts()
 
     wb.active = 0

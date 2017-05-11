@@ -125,23 +125,24 @@ class Suite(object):
 
         # runtime attributes
         self.name_space = ''
-
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
         self.acceptable_weakness_ids_full_list_dict = {}
         self.used_wids_per_cwe = []
         self.used_wids_per_cwe_dict = {}
-        self.manual_review_recommendataion = ''
+        self.weightings_per_cwe_dict = {}
+        self.unique_cwes = []
+        # todo 5/11/7 default these to 'FAIL' and ' .... does require manual review
+        self.manual_review_recommendataion = ' * There are no test cases requiring manual review!'
         self.pass_fail = 'PASS'
 
-        # auto-run methods on creation
+        ''' auto-run methods on creation '''
         self.create_xml_dir()
         # get the xml info and create copies
         self.get_xml_info(self.scan_data_files)
         # get the test case counts
         self.get_test_case_paths_and_counts(self.scan_data_files)
-        # import the weakness ids from vendor input sheet
-        # self.import_weakness_ids(self.scan_data_files)
+        # sort
         self.sort_by_columns()
 
     def create_xml_dir(self):
