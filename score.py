@@ -6,27 +6,14 @@
 #
 import os, re, argparse, shutil, py_common, operator
 import xml.etree.ElementTree as ET
-import zipfile
-
-from suite import Suite, TestCase
 
 from time import strftime
-
+from suite import Suite, TestCase
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, Reference
-from openpyxl import utils
-
-from hashlib import sha1
-
-import itertools
-
-# from openpyxl.formatting.rule import ColorScaleRule
-
-from openpyxl.formatting.rule import ColorScaleRule
-
 from operator import itemgetter
-
+from hashlib import sha1
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
@@ -53,8 +40,10 @@ def format_workbook():
     ws1.column_dimensions['E'].width = 8
     ws1.column_dimensions['F'].width = 8
     ws1.column_dimensions['G'].width = 8
+    ws1.column_dimensions['H'].width = 21
+    ws1.column_dimensions['I'].width = 8
     ws1.column_dimensions['AC'].width = 12
-    ws1.sheet_view.zoomScale = 90
+    ws1.sheet_view.zoomScale = 80
     ws1.sheet_view.showGridLines = False
     # ws1.sheet_properties.tabColor = "E6B8B7"
 
@@ -104,6 +93,11 @@ def format_workbook():
     ws4.freeze_panes = ws4['A2']
     ws4.sheet_view.zoomScale = 80
     ws4.sheet_view.showGridLines = False
+    # SCORE
+    ws5.column_dimensions['A'].width = 19
+    ws5.freeze_panes = ws5['A2']
+    ws5.sheet_view.zoomScale = 80
+    ws5.sheet_view.showGridLines = False
 
 
 def count_kdm_test_cases(fpr_name):
@@ -280,13 +274,6 @@ def count_juliet_test_cases_OROGINAL(fpr_name):
     path_and_count.extend([count, full_path])
 
     return path_and_count
-
-
-def extract_fvdl_from_fpr(fpr_file, output_dir):
-    # fortify .fpr files need unzipped to get the xml
-    myzip = zipfile.ZipFile(fpr_file, mode='r')
-    myzip.extract(FVDL_NAME, path=output_dir)
-    myzip.close()
 
 
 def create_or_clean_xml_dir(xml_dir):
@@ -556,8 +543,63 @@ def collect_hit_data(suite_dat):
     # sort hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
+    ##############################
+    # todo: 5/9/7 new, create new function here
+
+    list_of_dicts = []
+
+    suite_data.suite_hit_data_complete = hit_data
+    good_data = []
+    # dedupe data
+    for hit_dat in suite_data.suite_hit_data_complete:
+        # only juliet/false have 'good...' opportunities
+        if hit_dat[1] == 'juliet' and hit_dat[2] == 'FALSE':
+            # good_data.append(hit_dat[:-7])
+            good_data.append(hit_dat)
+
+    good_data_unique = remove_dups(good_data)
+
+    for idx, data_unique in enumerate(good_data_unique):
+        for idx1, cell_dat in enumerate(data_unique):
+            ws6.cell(row=idx + 1, column=idx1 + 1).value = data_unique[idx1]  # todo: temp for debug
+
+        # name of containing function
+        name = data_unique[5]
+        # score
+        hits = int(data_unique[6])
+        # opps
+        opps = int(data_unique[7])
+
+        list_of_dicts = update_list_of_dicts(list_of_dicts, name, hits, opps)
+
+    list_of_dicts = sorted(list_of_dicts, key=itemgetter('name'))
+
+    for idx, hits1 in enumerate(list_of_dicts):
+        ws4.cell(row=idx + 1, column=1).value = hits1['name']
+        ws4.cell(row=idx + 1, column=2).value = hits1['hits']
+        ws4.cell(row=idx + 1, column=3).value = hits1['opps']
+
+    ##############################
+
     print('Writing hit data to sheet ... please stand by, thank you for your patience!')
     write_hit_data(suite_dat, hit_data)
+
+
+def update_list_of_dicts(L, name, hits, opps):
+    found = False
+    # update the dictionary if it already exists
+    if len(L) > 0:
+        for d in L:
+            if d['name'] == name:
+                d['hits'] += hits
+                d['opps'] += opps
+                found = True
+                break
+    # create new dictionary in the list if it does not exists
+    if not found:
+        L.append({'name': name, 'hits': hits, 'opps': opps})
+
+    return L
 
 
 def write_hit_data(suite_dat, hit_data):
@@ -901,7 +943,6 @@ def write_summary_data(scan_data):
     for cwe in unique_cwes:
 
         tc_t = tc_f = tp = fp = 0
-
         row += 1
 
         # tally up the results from each xml project
@@ -919,8 +960,11 @@ def write_summary_data(scan_data):
         for row1 in ws1.iter_rows():
             for cell in row1:
                 if 1 < cell.col_idx < 9:
-                    if tp == 0:
-                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'F2F2F2')
+                    # highlight if no wid for this cwe
+                    if all(x == 'None' for x in suite_data.acceptable_weakness_ids_full_list_dict[cwe]):
+                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'D9D9D9')
+                    elif tp == 0:
+                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'D6DCE4')
                     else:
                         set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'FFFFFF')
 
@@ -955,20 +999,30 @@ def write_summary_data(scan_data):
         ws1.cell(row=row, column=7).number_format = '0.00'
 
     # revision with git hash
-    ws1.cell(row=1, column=8).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=10)
-    ws1.cell(row=1, column=8).value = '  score.exe, rev. v2.0.' + git_hash[:7]  # todo: keep short hash? or long?
-    set_appearance(ws1, 1, 8, 'font_color', 'BFBFBF')
-    cell = ws1['H1']
-    cell.font = cell.font.copy(bold=False, italic=True)
+    ws1.cell(row=1, column=8).alignment = Alignment(horizontal="center", vertical='center')
+    # ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=10)
+    ws1.cell(row=1, column=8).value = '  score.exe, v2.0.' + git_hash[:7]  # todo: keep short hash? or long?
+    set_appearance(ws1, 1, 8, 'font_color', '000000')
+    set_appearance(ws1, 1, 8, 'fg_fill', 'F2F2F2')
+    # cell = ws1['H1']
+    # cell.font = cell.font.copy(bold=False, italic=False)
+
+    # pass/fail notification
+    ws1.cell(row=1, column=9).alignment = Alignment(horizontal="center", vertical='center')
+    ws1.cell(row=1, column=9).value = suite_data.pass_fail
+    set_appearance(ws1, 1, 9, 'font_color', 'FFFFFF')
+    set_appearance(ws1, 1, 9, 'fg_fill', '548235')
+    cell = ws1['I1']
+    cell.font = cell.font.copy(bold=True, italic=False)
 
     # todo: 5/6/7 manual review notice needs auto insert from ws3
     # manual review notification
-    ws1.cell(row=1, column=11).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=1, start_column=11, end_row=1, end_column=29)
-    ws1.cell(row=1, column=11).value = '  * There are no test cases requiring manual review!'
-    set_appearance(ws1, 1, 11, 'font_color', '548235')
-    cell = ws1['K1']
+    ws1.cell(row=1, column=10).alignment = Alignment(horizontal="left", vertical='center')
+    ws1.merge_cells(start_row=1, start_column=10, end_row=1, end_column=29)
+    ws1.cell(row=1, column=10).value = ' * There are no test cases requiring manual review!'
+    set_appearance(ws1, 1, 10, 'font_color', '000000')
+    set_appearance(ws1, 1, 10, 'fg_fill', 'F2F2F2')
+    cell = ws1['J1']
     cell.font = cell.font.copy(bold=False, italic=True)
 
 
@@ -1062,6 +1116,12 @@ def import_weakness_ids(suite_dat):
         for cell in row_idx:
             weakness_ids[row][col] = str(cell.value)
             col += 1
+
+        # create a dictionary of wids per cwe
+        if row > 0:
+            cwe_id = 'CWE' + str(weakness_ids[row][0]).zfill(3)
+            suite_data.acceptable_weakness_ids_full_list_dict[cwe_id] = weakness_ids[row][1:]
+
         row += 1
         # create a full list for the suite object
         setattr(suite_dat, 'acceptable_weakness_ids_full_list', weakness_ids)
@@ -1189,9 +1249,6 @@ def githash():
 
 if __name__ == '__main__':
 
-    data = []
-    juliet_f_counts = []
-
     py_common.print_with_timestamp('--- STARTED SCORING ---')
 
     parser = argparse.ArgumentParser(description='A script used to score all SCA tools.')
@@ -1217,6 +1274,8 @@ if __name__ == '__main__':
     shutil.copyfile(vendor_input, scorecard)
 
     # todo: 5/6/7 create argument for all files in the project
+
+    # get hash of score files for rev suffix
     git_hash = githash()
 
     # add sheets and format
@@ -1224,8 +1283,9 @@ if __name__ == '__main__':
     ws1 = wb.create_sheet('Summary', 0)
     ws2 = wb.create_sheet('XML Data', 1)
     ws3 = wb.create_sheet('Hit Data', 2)
-    ws4 = wb.create_sheet('Analytics', 3)
+    ws4 = wb.create_sheet('Hit Analytics', 3)
     ws5 = wb.create_sheet('SCORE', 4)
+    ws6 = wb.create_sheet('TEMP', 5)
 
     format_workbook()
 
@@ -1244,6 +1304,7 @@ if __name__ == '__main__':
     # write to sheets
     collect_hit_data(suite_data)
     write_xml_data(suite_data)
+
     write_summary_data(suite_data)
     create_summary_charts()
 

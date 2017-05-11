@@ -1,7 +1,5 @@
-pydev debugger: process 8852 is connecting
-
-[Tue May  9 12:00:02 2017] --- STARTED SCORING ---
-[Tue May  9 12:00:02 2017] C:\01\xmls already exists. Cleaning before use...
+[Thu May 11 14:12:00 2017] --- STARTED SCORING ---
+[Thu May 11 14:12:00 2017] C:\01\xmls already exists. Cleaning before use...
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s01.fpr
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s02.fpr
 PROJECT FILE--- C:\01\scans\juliet_03-04-17_11-15-PM\T\HP_Fortify.Suite_01_C.2017-03-04.CWE121_s03.fpr
@@ -3265,3 +3263,4 @@ Collecting Hit Data for: CWE789_s01_T_juliet.xml
 Collecting Hit Data for: CWE843_F_juliet.xml
 Collecting Hit Data for: CWE843_T_juliet.xml
 Writing hit data to sheet ... please stand by, thank you for your patience!
+[Thu May 11 14:16:30 2017] --- FINISHED SCORING ---

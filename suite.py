@@ -120,6 +120,7 @@ class Suite(object):
         ###########################################
         # stores the hits per test case {test_case_name: hit_count}
         self.suite_hit_data = {}  # todo: 5/4/17 new
+        self.suite_hit_data_complete = []
         ###########################################
 
         # runtime attributes
@@ -131,6 +132,7 @@ class Suite(object):
         self.used_wids_per_cwe = []
         self.used_wids_per_cwe_dict = {}
         self.manual_review_recommendataion = ''
+        self.pass_fail = 'PASS'
 
         # auto-run methods on creation
         self.create_xml_dir()
