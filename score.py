@@ -1035,6 +1035,8 @@ def write_weighted_averages(suite_data, ws):
 
     row = 1
     offset = 7
+    valid_precision_count = 0
+    recall_count = 0
 
     # write column headers
     for idx, title in enumerate(score_sheet_titles_addendum):
@@ -1049,37 +1051,63 @@ def write_weighted_averages(suite_data, ws):
         for cell in row_idx:
             if cell.col_idx == 1:
                 if cell.row > 1:
-                    weight = suite_data.weightings_per_cwe_dict[cell.value]
+                    # col 1 contains the cwe string
+                    cwe = cell.value
+                    weight = suite_data.weightings_per_cwe_dict[cwe]
                     # p-wt.
-                    ws.cell(row=cell.row, column=1 + offset).value = weight
-                    ws.cell(row=cell.row, column=1 + offset).number_format = '0.00'
-                    ws.cell(row=cell.row, column=1 + offset).alignment = Alignment(horizontal="right")
-                    set_appearance(ws, cell.row, 1 + offset, 'fg_fill', 'DDEBF7')  # light blue
-                    set_appearance(ws, cell.row, 1 + offset, 'font_color', '833C0C')  # dark brown
+                    ws.cell(row=cell.row, column=offset + 1).value = weight
+                    ws.cell(row=cell.row, column=offset + 1).number_format = '0.00'
+                    ws.cell(row=cell.row, column=offset + 1).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, offset + 1, 'fg_fill', 'DDEBF7')  # light blue
+                    set_appearance(ws, cell.row, offset + 1, 'font_color', '833C0C')  # dark brown
                     # r-wt.
-                    ws.cell(row=cell.row, column=4 + offset).value = weight
-                    ws.cell(row=cell.row, column=4 + offset).number_format = '0.00'
-                    ws.cell(row=cell.row, column=4 + offset).alignment = Alignment(horizontal="right")
-                    set_appearance(ws, cell.row, 4 + offset, 'fg_fill', 'EDEDED')  # light gray
-                    set_appearance(ws, cell.row, 4 + offset, 'font_color', 'C00000')  # dark red
+                    ws.cell(row=cell.row, column=offset + 4).value = weight
+                    ws.cell(row=cell.row, column=offset + 4).number_format = '0.00'
+                    ws.cell(row=cell.row, column=offset + 4).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, offset + 4, 'fg_fill', 'EDEDED')  # light gray
+                    set_appearance(ws, cell.row, offset + 4, 'font_color', 'C00000')  # dark red
 
                     # p-final
                     if row_idx[5].value == 'N/A':
-                        ws.cell(row=cell.row, column=2 + offset).value = 'N/A'
-                        set_appearance(ws, cell.row, 2 + offset, 'font_color', '808080')  # med gray
+                        suite_data.precision_values_per_cwe[cwe] = 'N/A'
+                        ws.cell(row=cell.row, column=offset + 2).value = 'N/A'
+                        set_appearance(ws, cell.row, offset + 2, 'font_color', '808080')  # med gray
                     else:
-                        ws.cell(row=cell.row, column=2 + offset).value = weight * row_idx[5].value
-                        set_appearance(ws, cell.row, 2 + offset, 'font_color', '0000FF')  # med gray
-                        ws.cell(row=cell.row, column=2 + offset).number_format = '0.00'
+                        suite_data.precision_values_per_cwe[cwe] = weight * row_idx[5].value
+                        ws.cell(row=cell.row, column=offset + 2).value = suite_data.precision_values_per_cwe[cwe]
+                        set_appearance(ws, cell.row, offset + 2, 'font_color', '0000FF')  # blue
+                        ws.cell(row=cell.row, column=offset + 2).number_format = '0.00'
+                    ws.cell(row=cell.row, column=offset + 2).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, offset + 2, 'fg_fill', 'DDEBF7')  # light blue
 
-                    ws.cell(row=cell.row, column=2 + offset).alignment = Alignment(horizontal="right")
-                    set_appearance(ws, cell.row, 2 + offset, 'fg_fill', 'DDEBF7')  # light blue
+                    # p-avg
+                    print('prec_val_per_cwe', cwe, suite_data.precision_values_per_cwe[cwe])
+                    # only average precision if it is valid todo: this may not be fail and need re-evaluated
+                    if suite_data.precision_values_per_cwe[cwe] != 'N/A':
+                        suite_data.precision_accumulated_valid_count += 1
+                        suite_data.precision_accumulated_valid_values += suite_data.precision_values_per_cwe[cwe]
+                        suite_data.precision_average = suite_data.precision_accumulated_valid_values \
+                                                       / suite_data.precision_accumulated_valid_count
+    ws.merge_cells(start_row=2, start_column=offset + 3, end_row=ws.max_row, end_column=offset + 3)
+    set_appearance(ws, 2, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
+    set_appearance(ws, ws.max_row, offset + 3, 'font_color', '0000FF')  # blue
+    ws.cell(row=2, column=offset + 3).value = suite_data.precision_average
+    ws.cell(row=2, column=offset + 3).number_format = '0.00'
+    ws.cell(row=2, column=offset + 3).alignment = Alignment(horizontal="center", vertical='center')
 
 
 def set_cwe_weightings(suite_dat):
     # todo: all set to 1.0 for now
     for cwe in suite_dat.unique_cwes:
         suite_dat.weightings_per_cwe_dict[cwe] = 1.0
+        # todo: 5/12/7 remove this, for testing only. assumption is that
+        # todo: (cont) for each cwe, same weighting applies to both precisino and recall?
+        ''' 
+        if cwe == 'CWE194':
+            suite_dat.weightings_per_cwe_dict[cwe] = .5 
+        else:
+            suite_dat.weightings_per_cwe_dict[cwe] = 1.0
+        '''
 
 
 def write_score_and_message_to_summary(ws):

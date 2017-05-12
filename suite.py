@@ -3,6 +3,9 @@ import os, re, zipfile, operator
 import py_common
 
 FVDL_NAME = "audit.fvdl"
+# todo: this will need to be firmly defined
+SCORE_THRESHOLD = 0.45
+
 
 class TestCase(object):
     # def __init__(self, filename):
@@ -117,13 +120,10 @@ class Suite(object):
         # list of tc paths
         self.tc_paths = []
 
-        ###########################################
+        ''' runtime attributes '''
         # stores the hits per test case {test_case_name: hit_count}
-        self.suite_hit_data = {}  # todo: 5/4/17 new
+        self.suite_hit_data = {}
         self.suite_hit_data_complete = []
-        ###########################################
-
-        # runtime attributes
         self.name_space = ''
         self.tag_info = []
         self.acceptable_weakness_ids_full_list = []
@@ -132,6 +132,21 @@ class Suite(object):
         self.used_wids_per_cwe_dict = {}
         self.weightings_per_cwe_dict = {}
         self.unique_cwes = []
+        # precision
+        self.precision_values_per_cwe = {}
+        self.precision_accumulated_valid_values = 0
+        self.precision_accumulated_valid_count = 0  # excluding 'N/A'
+        self.precision_average = 0
+        self.precision_score = 0
+        # recall
+        self.recall_values_per_cwe = {}
+        self.recall_accumulated_value = 0
+        self.recall_accumulated_count = 0
+        self.recall_average = 0
+        self.recall_score = 0
+        # accumulated results
+        self.overall_score = 0
+        self.overall_required_threshold = SCORE_THRESHOLD
         # todo 5/11/7 default these to 'FAIL' and ' .... does require manual review
         self.manual_review_recommendataion = ' * There are no test cases requiring manual review!'
         self.pass_fail = 'PASS'
