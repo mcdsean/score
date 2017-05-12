@@ -943,7 +943,8 @@ def write_summary_data(scan_data, ws):
     row = 1
     cwes = []
 
-    ws.freeze_panes = ws['H2']
+    # set all totals to zero
+    suite_data.clear_totals()
 
     # write column headers
     for idx, title in enumerate(summary_sheet_titles):
@@ -994,7 +995,7 @@ def write_summary_data(scan_data, ws):
 
         set_appearance(ws, row, 1, 'fg_fill', 'C6C6C6')
 
-        # PRECISION
+        # precision
         if tp + fp != 0:
             prec = tp / (tp + fp)
             ws.cell(row=row, column=6).value = round(prec, 2)
@@ -1003,32 +1004,49 @@ def write_summary_data(scan_data, ws):
             ws.cell(row=row, column=6).value = 'N/A'
             ws.cell(row=row, column=6).alignment = Alignment(horizontal='right')
 
-        # RECALL
+        # recall
         recall = tp / tc_t
 
-        # todo: format numbers with commas
+        # write cwe values to sheet
         ws.cell(row=row, column=1).value = cwe
         ws.cell(row=row, column=2).value = tc_t
         ws.cell(row=row, column=3).value = tc_f
         ws.cell(row=row, column=4).value = tp
         ws.cell(row=row, column=5).value = fp
         ws.cell(row=row, column=7).value = recall
-        # todo: loop this
-        ws.cell(row=row, column=2).number_format = '#,##0'
-        ws.cell(row=row, column=3).number_format = '#,##0'
-        ws.cell(row=row, column=4).number_format = '#,##0'
-        ws.cell(row=row, column=5).number_format = '#,##0'
+        # update totals
+        suite_data.suite_tc_count_true += tc_t
+        suite_data.suite_tc_count_false += tc_f
+        suite_data.suite_tp_count += tp
+        suite_data.suite_fp_count += fp
+        # apply format
+        for col in range(2, 5):
+            ws.cell(row=row, column=col).number_format = '#,##0'
         ws.cell(row=row, column=7).number_format = '0.00'
 
     # summary sheet
     if ws == ws1:
+        ws.freeze_panes = ws['H2']
+        # write message to row 1 on summary sheet
         write_score_and_message_to_summary(ws)
     # score sheet
     if ws == ws5:
+        ws.freeze_panes = ws['N2']
+        # append columns to the right of current data
         write_weighted_averages(suite_data, ws)
+
+    # write totals
+    ws.cell(row=row + 1, column=2).value = suite_data.suite_tc_count_true
+    ws.cell(row=row + 1, column=3).value = suite_data.suite_tc_count_false
+    ws.cell(row=row + 1, column=4).value = suite_data.suite_tp_count
+    ws.cell(row=row + 1, column=5).value = suite_data.suite_fp_count
+    for col in range(2, 6):
+        ws.cell(row=row + 1, column=col).number_format = '#,##0'
+        set_appearance(ws, row + 1, col, 'font_color', '0000FF')  # blue
 
 
 def write_weighted_averages(suite_data, ws):
+
     #########################################################################################
     score_sheet_titles_addendum = ['P-Wt.', 'P-Final', 'P-Avg', 'R-Wt.', 'R-Final', 'R-Avg.']
     #########################################################################################
@@ -1081,7 +1099,6 @@ def write_weighted_averages(suite_data, ws):
                     set_appearance(ws, cell.row, offset + 2, 'fg_fill', 'DDEBF7')  # light blue
 
                     # p-avg
-                    print('prec_val_per_cwe', cwe, suite_data.precision_values_per_cwe[cwe])
                     # only average precision if it is valid todo: this may not be fail and need re-evaluated
                     if suite_data.precision_values_per_cwe[cwe] != 'N/A':
                         suite_data.precision_accumulated_valid_count += 1
@@ -1089,11 +1106,12 @@ def write_weighted_averages(suite_data, ws):
                         suite_data.precision_average = suite_data.precision_accumulated_valid_values \
                                                        / suite_data.precision_accumulated_valid_count
     ws.merge_cells(start_row=2, start_column=offset + 3, end_row=ws.max_row, end_column=offset + 3)
-    set_appearance(ws, 2, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
-    set_appearance(ws, ws.max_row, offset + 3, 'font_color', '0000FF')  # blue
     ws.cell(row=2, column=offset + 3).value = suite_data.precision_average
     ws.cell(row=2, column=offset + 3).number_format = '0.00'
     ws.cell(row=2, column=offset + 3).alignment = Alignment(horizontal="center", vertical='center')
+    set_appearance(ws, 2, offset + 3, 'font_color', '0000FF')  # blue
+    set_appearance(ws, 2, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
+    set_appearance(ws, ws.max_row, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
 
 
 def set_cwe_weightings(suite_dat):
@@ -1519,9 +1537,11 @@ if __name__ == '__main__':
     # get a summary of all used wids
     get_used_wids(suite_data)
 
+    # ---------------
     # write to sheets
     collect_hit_data(suite_data)
     write_xml_data(suite_data)
+    #---------------
 
     # summary sheet
     write_summary_data(suite_data, ws1)

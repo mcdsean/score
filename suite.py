@@ -132,6 +132,11 @@ class Suite(object):
         self.used_wids_per_cwe_dict = {}
         self.weightings_per_cwe_dict = {}
         self.unique_cwes = []
+        # totals
+        self.suite_tc_count_true = 0
+        self.suite_tc_count_false = 0
+        self.suite_tp_count = 0
+        self.suite_fp_count = 0
         # precision
         self.precision_values_per_cwe = {}
         self.precision_accumulated_valid_values = 0
@@ -151,6 +156,7 @@ class Suite(object):
         self.manual_review_recommendataion = ' * There are no test cases requiring manual review!'
         self.pass_fail = 'PASS'
 
+        self.clear_totals()
         ''' auto-run methods on creation '''
         self.create_xml_dir()
         # get the xml info and create copies
@@ -159,6 +165,13 @@ class Suite(object):
         self.get_test_case_paths_and_counts(self.scan_data_files)
         # sort
         self.sort_by_columns()
+
+    def clear_totals(self):
+        self.suite_tc_count_true = 0
+        self.suite_tc_count_false = 0
+        self.suite_tp_count = 0
+        self.suite_fp_count = 0
+
 
     def create_xml_dir(self):
         # create, or empty, 'xmls' folder
