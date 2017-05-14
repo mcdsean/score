@@ -137,6 +137,7 @@ class Suite(object):
         self.suite_tc_count_false = 0
         self.suite_tp_count = 0
         self.suite_fp_count = 0
+        self.suite_cwe_count = 0
         # precision
         self.precision_values_per_cwe = {}
         self.precision_accumulated_valid_values = 0

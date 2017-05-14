@@ -11,7 +11,10 @@ from time import strftime
 from suite import Suite, TestCase
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
-from openpyxl.chart import BarChart, Reference
+from openpyxl.chart import BarChart, LineChart, Reference, Series
+
+from openpyxl.chart.label import DataLabelList
+from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 from operator import itemgetter
 from hashlib import sha1
 
@@ -111,6 +114,10 @@ def format_workbook():
     ws5.freeze_panes = ws5['H2']
     ws5.sheet_view.zoomScale = 80
     ws5.sheet_view.showGridLines = False
+
+    # todo consider hiding the helper columns for average
+    # for col in ['A', 'B', 'C']:
+    #     worksheet.column_dimensions[col].hidden = True
 
 
 def count_kdm_test_cases(fpr_name):
@@ -984,14 +991,14 @@ def write_summary_data(scan_data, ws):
                     # highlight if no wid for this cwe
                     if all(x == 'None' for x in suite_data.acceptable_weakness_ids_full_list_dict[cwe]):
                         # light blue, no wid provided
-                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'D6DCE4')
+                        set_appearance(ws, row, cell.col_idx, 'fg_fill', 'D6DCE4')
                     elif tp == 0:
                         # light gray, had at least one wid privided for the cwe, but no hits
-                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'F2F2F2')
+                        set_appearance(ws, row, cell.col_idx, 'fg_fill', 'F2F2F2')
                     else:
-                        set_appearance(ws, row, cell.col_idx - 1, 'fg_fill', 'FFFFFF')
+                        set_appearance(ws, row, cell.col_idx, 'fg_fill', 'FFFFFF')
 
-                    ws.cell(row=row, column=cell.col_idx - 1).alignment = Alignment(horizontal='right')
+                    ws.cell(row=row, column=cell.col_idx).alignment = Alignment(horizontal='right')
 
         set_appearance(ws, row, 1, 'fg_fill', 'C6C6C6')
 
@@ -1019,6 +1026,7 @@ def write_summary_data(scan_data, ws):
         suite_data.suite_tc_count_false += tc_f
         suite_data.suite_tp_count += tp
         suite_data.suite_fp_count += fp
+        suite_data.suite_cwe_count = row - 1
         # apply format
         for col in range(2, 5):
             ws.cell(row=row, column=col).number_format = '#,##0'
@@ -1034,6 +1042,7 @@ def write_summary_data(scan_data, ws):
         ws.freeze_panes = ws['N2']
         # append columns to the right of current data
         write_weighted_averages(suite_data, ws)
+        write_averages_to_summary_sheet()
 
     # write totals
     ws.cell(row=row + 1, column=2).value = suite_data.suite_tc_count_true
@@ -1043,6 +1052,13 @@ def write_summary_data(scan_data, ws):
     for col in range(2, 6):
         ws.cell(row=row + 1, column=col).number_format = '#,##0'
         set_appearance(ws, row + 1, col, 'font_color', '0000FF')  # blue
+
+
+def write_averages_to_summary_sheet():
+    for row in ws1.iter_rows():
+        if row[0].value is not None and row[0].row > 1:
+            ws1.cell(row=row[0].row, column=8).value = suite_data.precision_average
+            set_appearance(ws1, row[0].row, 8, 'font_color', '00FFFF', False)
 
 
 def write_weighted_averages(suite_data, ws):
@@ -1278,7 +1294,219 @@ def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
         cell.border = thin_border
 
 
+def test_chart2():
+    c1 = LineChart()
+    c1.title = "Line Chart"
+    c1.style = 13
+    c1.y_axis.title = 'Size'
+    c1.x_axis.title = 'Test Number'
+
+    data = Reference(ws1, min_col=2, min_row=1, max_col=4, max_row=30)
+    # data = Reference(ws1, min_col=7, min_row=1, max_col=8, max_row=30)
+    c1.add_data(data, titles_from_data=True)
+
+    # Style the lines
+    s1 = c1.series[0]
+    s1.marker.symbol = "triangle"
+    s1.marker.graphicalProperties.solidFill = "FF0000"  # Marker filling
+    s1.marker.graphicalProperties.line.solidFill = "FF0000"  # Marker outline
+
+    s1.graphicalProperties.line.noFill = True
+
+    s2 = c1.series[1]
+    s2.graphicalProperties.line.solidFill = "00AAAA"
+    s2.graphicalProperties.line.dashStyle = "dashed"
+    s2.graphicalProperties.line.width = 100050  # width in EMUs
+
+    s2 = c1.series[2]
+    s2.smooth = True  # Make the line smooth
+
+    ws1.add_chart(c1, "H2")
+
+
 def create_summary_charts():
+    c2 = LineChart()
+    v2 = Reference(ws1, min_col=8, min_row=2, max_row=53)
+    c2.add_data(v2, titles_from_data=False, from_rows=False)
+    # c2.y_axis.axId = 200
+    # c2.y_axis.title = "Humans"
+    c2.y_axis.scaling.min = 0
+    c2.y_axis.scaling.max = 1
+    # c2.legend = None
+    c2.y_axis.crosses = "max"
+    s2 = c2.series[0]
+    s2.graphicalProperties.line.solidFill = 'FF0000'
+    s2.graphicalProperties.line.dashStyle = 'dash'
+    # s2.graphicalProperties.line.dashStyle = 'lgDash'
+    s2.graphicalProperties.line.width = 10000  # width in EMUs
+
+    s2.dataLabels = DataLabelList()
+    s2.dataLabels.showVal = True
+
+    # precision
+    p_chart = BarChart()
+    p_chart.type = 'col'
+    # p_chart.style = 11 original
+    p_chart.style = 5
+    p_chart.y_axis.title = 'Precision & Recall'
+    p_chart.x_axis.title = 'CWE Number'
+
+    recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
+    p_chart.add_data(recall_data, titles_from_data=True)
+    recall_data = Reference(ws1, min_col=7, min_row=1, max_row=52, max_col=7)
+    p_chart.add_data(recall_data, titles_from_data=True)
+    p_chart_s1 = p_chart.series[1]
+
+    s5 = p_chart.series[0]
+    s5.graphicalProperties.line.solidFill = 'FF0000'
+    s5.graphicalProperties.solidFill = 'FF8800'
+
+    # fill = PatternFillProperties(prst="pct5")
+    # #fill.foreground = ColorChoice(prstClr="red")E6B8B7
+    # #fill.background = ColorChoice(prstClr="blue")
+    # #fill.foreground = ColorChoice(prstClr='medSeaGreen')
+    # fill.background = ColorChoice(prstClr="medSeaGreen")
+    # p_chart_s1.graphicalProperties.pattFill = fill
+
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    p_chart.set_categories(cats)
+    p_chart.shape = 4
+    p_chart.title = 'Protection Profile Scores (Precision & Recall)'
+    # auto_axis = True
+    p_chart.y_axis.scaling.min = 0
+    p_chart.y_axis.scaling.max = 1
+    # p_chart.height = 15
+    # p_chart.width = 45
+    p_chart.height = 15
+    p_chart.width = 40
+    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
+
+
+    #################
+    # todo: 5/13 new ... adjust for desired colors
+    # series = p_chart.series[1]
+    # fill = PatternFillProperties(prst="pct5")
+    # fill.foreground = ColorChoice(prstClr="red")
+    # fill.background = ColorChoice(prstClr="blue")
+    # series.graphicalProperties.pattFill = fill
+
+
+    #################
+
+
+    p_chart += c2
+
+    ws1.add_chart(p_chart, 'H2')
+
+    '''
+    # precision
+    p_chart = BarChart()
+    p_chart.type = 'col'
+    p_chart.style = 11
+    p_chart.y_axis.title = 'Precision'
+    p_chart.x_axis.title = 'CWE Number'
+    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    p_chart.add_data(precision_data, titles_from_data=True)
+    p_chart.set_categories(cats)
+    p_chart.shape = 4
+    p_chart.title = 'Protection Profile Scores'
+    # auto_axis = True
+    p_chart.y_axis.scaling.min = 0
+    p_chart.y_axis.scaling.max = 1
+    # p_chart.height = 15
+    # p_chart.width = 45
+    p_chart.height = 15
+    p_chart.width = 40
+    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
+    ws1.add_chart(p_chart, 'H33')
+    '''
+
+
+def create_summary_charts_ORIGINAL():
+    c2 = LineChart()
+    v2 = Reference(ws1, min_col=8, min_row=2, max_row=53)
+    c2.add_data(v2, titles_from_data=False, from_rows=False)
+    # c2.y_axis.axId = 200
+    # c2.y_axis.title = "Humans"
+    c2.y_axis.scaling.min = 0
+    c2.y_axis.scaling.max = 1
+    # c2.legend = None
+    c2.y_axis.crosses = "max"
+    s2 = c2.series[0]
+    s2.graphicalProperties.line.solidFill = 'FF0000'
+    s2.graphicalProperties.line.dashStyle = 'dash'
+    # s2.graphicalProperties.line.dashStyle = 'lgDash'
+    s2.graphicalProperties.line.width = 10000  # width in EMUs
+
+    s2.dataLabels = DataLabelList()
+    s2.dataLabels.showVal = True
+
+    # recall
+    p_and_r_chart = BarChart()
+    p_and_r_chart.type = 'col'
+    # p_and_r_chart.style = 11 original
+    p_and_r_chart.style = 5
+    p_and_r_chart.y_axis.title = 'Precision & Recall'
+    p_and_r_chart.x_axis.title = 'CWE Number'
+    recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    p_and_r_chart.add_data(recall_data, titles_from_data=True)
+    p_and_r_chart.set_categories(cats)
+    p_and_r_chart.shape = 4
+    p_and_r_chart.title = 'Protection Profile Scores (Precision & Recall)'
+    # auto_axis = True
+    p_and_r_chart.y_axis.scaling.min = 0
+    p_and_r_chart.y_axis.scaling.max = 1
+    # p_and_r_chart.height = 15
+    # p_and_r_chart.width = 45
+    p_and_r_chart.height = 15
+    p_and_r_chart.width = 40
+    # p_and_r_chart.set_x_axis({'num_font':  {'rotation': 270}})
+
+
+    #################
+    # todo: 5/13 new ... adjust for desired colors
+    # series = p_and_r_chart.series[1]
+    # fill = PatternFillProperties(prst="pct5")
+    # fill.foreground = ColorChoice(prstClr="red")
+    # fill.background = ColorChoice(prstClr="blue")
+    # series.graphicalProperties.pattFill = fill
+
+
+    #################
+
+
+    p_and_r_chart += c2
+
+    ws1.add_chart(p_and_r_chart, 'H2')
+
+    '''
+    # precision
+    p_chart = BarChart()
+    p_chart.type = 'col'
+    p_chart.style = 11
+    p_chart.y_axis.title = 'Precision'
+    p_chart.x_axis.title = 'CWE Number'
+    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    p_chart.add_data(precision_data, titles_from_data=True)
+    p_chart.set_categories(cats)
+    p_chart.shape = 4
+    p_chart.title = 'Protection Profile Scores'
+    # auto_axis = True
+    p_chart.y_axis.scaling.min = 0
+    p_chart.y_axis.scaling.max = 1
+    # p_chart.height = 15
+    # p_chart.width = 45
+    p_chart.height = 15
+    p_chart.width = 40
+    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
+    ws1.add_chart(p_chart, 'H33')
+    '''
+
+
+def create_summary_charts_ORIGINAL():
     # recall
     p_and_r_chart = BarChart()
     p_and_r_chart.type = 'col'
@@ -1539,8 +1767,8 @@ if __name__ == '__main__':
 
     # ---------------
     # write to sheets
-    collect_hit_data(suite_data)
-    write_xml_data(suite_data)
+    # collect_hit_data(suite_data)
+    # write_xml_data(suite_data)
     #---------------
 
     # summary sheet
@@ -1550,6 +1778,7 @@ if __name__ == '__main__':
 
     # chart for summary sheet
     create_summary_charts()
+
 
     wb.active = 0
     wb.save(scorecard)
