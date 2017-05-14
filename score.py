@@ -9,9 +9,14 @@ import xml.etree.ElementTree as ET
 
 from time import strftime
 from suite import Suite, TestCase
-from openpyxl import load_workbook
+
+from openpyxl import load_workbook, drawing
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, LineChart, Reference, Series
+
+from openpyxl.drawing import shape
+
+
 
 from openpyxl.chart.label import DataLabelList
 from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
@@ -1059,6 +1064,8 @@ def write_averages_to_summary_sheet():
         if row[0].value is not None and row[0].row > 1:
             ws1.cell(row=row[0].row, column=8).value = suite_data.precision_average
             set_appearance(ws1, row[0].row, 8, 'font_color', '00FFFF', False)
+            ws1.cell(row=row[0].row, column=9).value = suite_data.recall_average
+            set_appearance(ws1, row[0].row, 9, 'font_color', '00FFFF', False)
 
 
 def write_weighted_averages(suite_data, ws):
@@ -1334,17 +1341,28 @@ def create_summary_charts():
     c2.y_axis.scaling.max = 1
     # c2.legend = None
     c2.y_axis.crosses = "max"
+
     s2 = c2.series[0]
-    s2.graphicalProperties.line.solidFill = 'FF0000'
+    s2.graphicalProperties.line.solidFill = '4572A7'
     s2.graphicalProperties.line.dashStyle = 'dash'
     # s2.graphicalProperties.line.dashStyle = 'lgDash'
     s2.graphicalProperties.line.width = 10000  # width in EMUs
+
+    ##############
+    # s2 = c2.series[1]
+    # s2.graphicalProperties.line.solidFill = '4572A7'
+    # s2.graphicalProperties.line.dashStyle = 'dash'
+    # s2.graphicalProperties.line.width = 10000  # width in EMUs
+    ##############
+
+
+
 
     s2.dataLabels = DataLabelList()
     s2.dataLabels.showVal = True
 
     # precision
-    p_chart = BarChart()
+    p_chart = BarChart(gapWidth=50)
     p_chart.type = 'col'
     # p_chart.style = 11 original
     p_chart.style = 5
@@ -1355,11 +1373,20 @@ def create_summary_charts():
     p_chart.add_data(recall_data, titles_from_data=True)
     recall_data = Reference(ws1, min_col=7, min_row=1, max_row=52, max_col=7)
     p_chart.add_data(recall_data, titles_from_data=True)
-    p_chart_s1 = p_chart.series[1]
+    # p_chart_s1 = p_chart.series[1]
+
 
     s5 = p_chart.series[0]
-    s5.graphicalProperties.line.solidFill = 'FF0000'
-    s5.graphicalProperties.solidFill = 'FF8800'
+    s5.graphicalProperties.line.solidFill = 'FFFFFF'
+    s5.graphicalProperties.solidFill = '4572A7'
+
+    s5 = p_chart.series[1]
+    s5.graphicalProperties.line.solidFill = 'FFFFFF'
+    s5.graphicalProperties.solidFill = '93A9CF'
+
+    # p_chart.dataLabels = DataLabelList()
+    #p_chart.dataLabels.showVal = True
+
 
     # fill = PatternFillProperties(prst="pct5")
     # #fill.foreground = ColorChoice(prstClr="red")E6B8B7
@@ -1379,7 +1406,7 @@ def create_summary_charts():
     # p_chart.width = 45
     p_chart.height = 15
     p_chart.width = 40
-    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
+    #p_chart.set_x_axis({'num_font':  {'rotation': 270}})
 
 
     #################
@@ -1506,7 +1533,7 @@ def create_summary_charts_ORIGINAL():
     '''
 
 
-def create_summary_charts_ORIGINAL():
+def create_summary_charts_ORIGINAL_1():
     # recall
     p_and_r_chart = BarChart()
     p_and_r_chart.type = 'col'
