@@ -4,7 +4,8 @@ import py_common
 
 FVDL_NAME = "audit.fvdl"
 # todo: this will need to be firmly defined
-SCORE_THRESHOLD = 0.45
+SCORE_THRESHOLD_UNWEIGHTED = 0.45
+SCORE_THRESHOLD_WEIGHTED = 0.45
 
 
 class TestCase(object):
@@ -138,21 +139,39 @@ class Suite(object):
         self.suite_tp_count = 0
         self.suite_fp_count = 0
         self.suite_cwe_count = 0
-        # precision
-        self.precision_values_per_cwe = {}
-        self.precision_accumulated_valid_values = 0
-        self.precision_accumulated_valid_count = 0  # excluding 'N/A'
-        self.precision_average = 0
-        self.precision_score = 0
-        # recall
-        self.recall_values_per_cwe = {}
-        self.recall_accumulated_values = 0
-        self.recall_accumulated_count = 0
-        self.recall_average = 0
-        self.recall_score = 0
-        # accumulated results
-        self.overall_score = 0
-        self.overall_required_threshold = SCORE_THRESHOLD
+
+        # precision, unweighted
+        self.precision_values_per_cwe_unweighted = {}
+        self.precision_accumulated_valid_values_unweighted = 0
+        self.precision_accumulated_valid_count_unweighted = 0  # excluding 'N/A'
+        self.precision_average_unweighted = 0
+        self.precision_score_unweighted = 0
+        # precision, weighted
+        self.precision_values_per_cwe_weighted = {}
+        self.precision_accumulated_valid_values_weighted = 0
+        self.precision_accumulated_valid_count_weighted = 0  # excluding 'N/A'
+        self.precision_average_weighted = 0
+        self.precision_score_weighted = 0
+        # recall, unweighted
+        self.recall_values_per_cwe_unweighted = {}
+        self.recall_accumulated_values_unweighted = 0
+        self.recall_accumulated_count_unweighted = 0
+        self.recall_average_unweighted = 0
+        self.recall_score_unweighted = 0
+        # recall, weighted
+        self.recall_values_per_cwe_weighted = {}
+        self.recall_accumulated_values_weighted = 0
+        self.recall_accumulated_count_weighted = 0
+        self.recall_average_weighted = 0
+        self.recall_score_weighted = 0
+
+        # accumulated results, unweighted
+        self.overall_score_unweighted = 0
+        self.overall_required_threshold_unweighted = SCORE_THRESHOLD_UNWEIGHTED
+        # accumulated results, weighted
+        self.overall_score_weighted = 0
+        self.overall_required_threshold_weighted = SCORE_THRESHOLD_UNWEIGHTED
+
         # todo 5/11/7 default these to 'FAIL' and ' .... does require manual review
         self.manual_review_recommendataion = ' * There are no test cases requiring manual review!'
         self.pass_fail = 'PASS'

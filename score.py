@@ -91,6 +91,9 @@ def format_workbook():
     # analytics
     ws4.freeze_panes = ws4['A2']
     ws4.sheet_view.zoomScale = 80
+    ws4.column_dimensions['A'].width = 15
+    ws4.column_dimensions['B'].width = 8
+    ws4.column_dimensions['C'].width = 8
     ws4.sheet_view.showGridLines = False
     # SCORE
     ws5.column_dimensions['A'].width = 8
@@ -102,10 +105,10 @@ def format_workbook():
     ws5.column_dimensions['G'].width = 8
     ws5.column_dimensions['H'].width = 7
     ws5.column_dimensions['I'].width = 7
-    ws5.column_dimensions['J'].width = 7
+    ws5.column_dimensions['J'].width = 5
     ws5.column_dimensions['K'].width = 7
     ws5.column_dimensions['L'].width = 7
-    ws5.column_dimensions['M'].width = 7
+    ws5.column_dimensions['M'].width = 5
     ws5.column_dimensions['AC'].width = 12
     ws5.freeze_panes = ws5['H2']
     ws5.sheet_view.zoomScale = 80
@@ -1054,14 +1057,14 @@ def write_averages_to_summary_sheet():
     # write helper col headers
     set_appearance(ws1, 1, 29, 'fg_fill', 'FFFFFF')
     set_appearance(ws1, 1, 30, 'fg_fill', 'FFFFFF')
-    ws1.cell(row=1, column=29).value = 'P(avg)= ' + '%0.2f' % suite_data.precision_average
-    ws1.cell(row=1, column=30).value = 'R(avg)= ' + '%0.2f' % suite_data.recall_average
+    ws1.cell(row=1, column=29).value = 'P(avg)= ' + '%0.2f' % suite_data.precision_average_unweighted
+    ws1.cell(row=1, column=30).value = 'R(avg)= ' + '%0.2f' % suite_data.recall_average_unweighted
     # write helper col p and r averages
     for row in ws1.iter_rows():
         if row[0].value is not None and row[0].row > 1:
-            ws1.cell(row=row[0].row, column=29).value = suite_data.precision_average
+            ws1.cell(row=row[0].row, column=29).value = suite_data.precision_average_unweighted
             set_appearance(ws1, row[0].row, 29, 'font_color', 'FFFFFF', False)
-            ws1.cell(row=row[0].row, column=30).value = suite_data.recall_average
+            ws1.cell(row=row[0].row, column=30).value = suite_data.recall_average_unweighted
             set_appearance(ws1, row[0].row, 30, 'font_color', 'FFFFFF', False)
 
 
@@ -1105,12 +1108,13 @@ def write_weighted_averages(suite_data, ws):
 
                     # p-final
                     if row_idx[5].value == 'N/A':
-                        suite_data.precision_values_per_cwe[cwe] = 'N/A'
+                        suite_data.precision_values_per_cwe_unweighted[cwe] = 'N/A'
                         ws.cell(row=cell.row, column=offset + 2).value = 'N/A'
                         set_appearance(ws, cell.row, offset + 2, 'font_color', '808080')  # med gray
                     else:
-                        suite_data.precision_values_per_cwe[cwe] = weight * row_idx[5].value
-                        ws.cell(row=cell.row, column=offset + 2).value = suite_data.precision_values_per_cwe[cwe]
+                        suite_data.precision_values_per_cwe_unweighted[cwe] = weight * row_idx[5].value
+                        ws.cell(row=cell.row, column=offset + 2).value = suite_data.precision_values_per_cwe_unweighted[
+                            cwe]
                         set_appearance(ws, cell.row, offset + 2, 'font_color', '0000FF')  # blue
                         ws.cell(row=cell.row, column=offset + 2).number_format = '0.00'
                     ws.cell(row=cell.row, column=offset + 2).alignment = Alignment(horizontal="right")
@@ -1122,29 +1126,30 @@ def write_weighted_averages(suite_data, ws):
                     else:
                         set_appearance(ws, cell.row, offset + 5, 'font_color', 'C00000')  # dark red
 
-                    suite_data.recall_values_per_cwe[cwe] = weight * row_idx[6].value
-                    ws.cell(row=cell.row, column=offset + 5).value = suite_data.recall_values_per_cwe[cwe]
+                    suite_data.recall_values_per_cwe_unweighted[cwe] = weight * row_idx[6].value
+                    ws.cell(row=cell.row, column=offset + 5).value = suite_data.recall_values_per_cwe_unweighted[cwe]
                     ws.cell(row=cell.row, column=offset + 5).number_format = '0.00'
                     ws.cell(row=cell.row, column=offset + 5).alignment = Alignment(horizontal="right")
                     set_appearance(ws, cell.row, offset + 5, 'fg_fill', 'EDEDED')  # light blue
 
                     # p-avg
-                    if suite_data.precision_values_per_cwe[cwe] != 'N/A':
-                        suite_data.precision_accumulated_valid_count += 1
-                        suite_data.precision_accumulated_valid_values += suite_data.precision_values_per_cwe[cwe]
-                        suite_data.precision_average = suite_data.precision_accumulated_valid_values \
-                                                       / suite_data.precision_accumulated_valid_count
+                    if suite_data.precision_values_per_cwe_unweighted[cwe] != 'N/A':
+                        suite_data.precision_accumulated_valid_count_unweighted += 1
+                        suite_data.precision_accumulated_valid_values_unweighted += \
+                        suite_data.precision_values_per_cwe_unweighted[cwe]
+                        suite_data.precision_average_unweighted = suite_data.precision_accumulated_valid_values_unweighted \
+                                                                  / suite_data.precision_accumulated_valid_count_unweighted
 
                     # r-avg
-                    suite_data.recall_accumulated_count += 1
-                    suite_data.recall_accumulated_values += suite_data.recall_values_per_cwe[cwe]
-                    suite_data.recall_average = suite_data.recall_accumulated_values \
-                                                / suite_data.recall_accumulated_count
+                    suite_data.recall_accumulated_count_unweighted += 1
+                    suite_data.recall_accumulated_values_unweighted += suite_data.recall_values_per_cwe_unweighted[cwe]
+                    suite_data.recall_average_unweighted = suite_data.recall_accumulated_values_unweighted \
+                                                           / suite_data.recall_accumulated_count_unweighted
 
     # todo 5/15/7 consolidate someo of these
     # p-avg display
     ws.merge_cells(start_row=2, start_column=offset + 3, end_row=ws.max_row, end_column=offset + 3)
-    ws.cell(row=2, column=offset + 3).value = suite_data.precision_average
+    ws.cell(row=2, column=offset + 3).value = suite_data.precision_average_unweighted
     ws.cell(row=2, column=offset + 3).number_format = '0.00'
     ws.cell(row=2, column=offset + 3).alignment = Alignment(horizontal="center", vertical='center')
     set_appearance(ws, 2, offset + 3, 'font_color', '0000FF')  # blue
@@ -1152,7 +1157,7 @@ def write_weighted_averages(suite_data, ws):
     set_appearance(ws, ws.max_row, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
     # r-avg display
     ws.merge_cells(start_row=2, start_column=offset + 6, end_row=ws.max_row, end_column=offset + 6)
-    ws.cell(row=2, column=offset + 6).value = suite_data.recall_average
+    ws.cell(row=2, column=offset + 6).value = suite_data.recall_average_unweighted
     ws.cell(row=2, column=offset + 6).number_format = '0.00'
     ws.cell(row=2, column=offset + 6).alignment = Alignment(horizontal="center", vertical='center')
     set_appearance(ws, 2, offset + 6, 'font_color', 'C00000')  # dark red
@@ -1195,115 +1200,6 @@ def write_score_and_message_to_summary(ws):
     set_appearance(ws, 1, 10, 'font_color', '000000')  # black
     set_appearance(ws, 1, 10, 'fg_fill', 'F2F2F2')  # light gray
     cell = ws['J1']
-    cell.font = cell.font.copy(bold=False, italic=True)
-
-
-def write_summary_data_ORIGINAL(scan_data):
-    #########################################################################################################
-    summary_sheet_titles = ['CWE', 'TC TRUE', 'TC FALSE', 'TP', 'FP', 'Precision', 'Recall']
-    #########################################################################################################
-
-    row = 1
-    cwes = []
-
-    ws1.freeze_panes = ws1['H2']
-
-    # write column headers
-    for idx, title in enumerate(summary_sheet_titles):
-        set_appearance(ws1, row, idx + 1, 'fg_fill', 'E6B8B7')
-        ws1.cell(row=1, column=idx + 1).value = title
-        ws1.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
-
-    for xml_project in scan_data.xml_projects:
-        cwes.append(getattr(xml_project, 'cwe_id_padded'))
-
-    unique_cwes = list(set(cwes))
-    unique_cwes.sort()
-
-    # collect data for each cwe and summarize
-    for cwe in unique_cwes:
-
-        tc_t = tc_f = tp = fp = 0
-        row += 1
-
-        # tally up the results from each xml project
-        for xml_project in scan_data.xml_projects:
-            if cwe == getattr(xml_project, 'cwe_id_padded'):
-                if 'TRUE' == getattr(xml_project, 'true_false'):
-                    tc_t += getattr(xml_project, 'tc_count')
-                    tp += getattr(xml_project, 'num_of_hits')
-                elif 'FALSE' == getattr(xml_project, 'true_false'):
-                    tc_f += getattr(xml_project, 'tc_count')
-                    fp += getattr(xml_project, 'num_of_hits')
-                    # todo: add break or continue to speed this up?
-
-        # for row1 in ws1.iter_rows('A1:C2'):
-        for row1 in ws1.iter_rows():
-            for cell in row1:
-                if 1 < cell.col_idx < 9:
-                    # highlight if no wid for this cwe
-                    if all(x == 'None' for x in suite_data.acceptable_weakness_ids_full_list_dict[cwe]):
-                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'D9D9D9')
-                    elif tp == 0:
-                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'D6DCE4')
-                    else:
-                        set_appearance(ws1, row, cell.col_idx - 1, 'fg_fill', 'FFFFFF')
-
-                    ws1.cell(row=row, column=cell.col_idx - 1).alignment = Alignment(horizontal='right')
-
-        set_appearance(ws1, row, 1, 'fg_fill', 'C6C6C6')
-
-        # PRECISION
-        if tp + fp != 0:
-            prec = tp / (tp + fp)
-            ws1.cell(row=row, column=6).value = round(prec, 2)
-            ws1.cell(row=row, column=6).number_format = '0.00'
-        else:
-            ws1.cell(row=row, column=6).value = 'N/A'
-            ws1.cell(row=row, column=6).alignment = Alignment(horizontal='right')
-
-        # RECALL
-        recall = tp / tc_t
-
-        # todo: format numbers with commas
-        ws1.cell(row=row, column=1).value = cwe
-        ws1.cell(row=row, column=2).value = tc_t
-        ws1.cell(row=row, column=3).value = tc_f
-        ws1.cell(row=row, column=4).value = tp
-        ws1.cell(row=row, column=5).value = fp
-        ws1.cell(row=row, column=7).value = recall
-        #todo: loop this
-        ws1.cell(row=row, column=2).number_format = '#,##0'
-        ws1.cell(row=row, column=3).number_format = '#,##0'
-        ws1.cell(row=row, column=4).number_format = '#,##0'
-        ws1.cell(row=row, column=5).number_format = '#,##0'
-        ws1.cell(row=row, column=7).number_format = '0.00'
-
-    # revision with git hash
-    ws1.cell(row=1, column=8).alignment = Alignment(horizontal="center", vertical='center')
-    # ws1.merge_cells(start_row=1, start_column=8, end_row=1, end_column=10)
-    ws1.cell(row=1, column=8).value = '  score.exe, v2.0.' + git_hash[:7]  # todo: keep short hash? or long?
-    set_appearance(ws1, 1, 8, 'font_color', '000000')
-    set_appearance(ws1, 1, 8, 'fg_fill', 'F2F2F2')
-    # cell = ws1['H1']
-    # cell.font = cell.font.copy(bold=False, italic=False)
-
-    # pass/fail notification
-    ws1.cell(row=1, column=9).alignment = Alignment(horizontal="center", vertical='center')
-    ws1.cell(row=1, column=9).value = suite_data.pass_fail
-    set_appearance(ws1, 1, 9, 'font_color', 'FFFFFF')
-    set_appearance(ws1, 1, 9, 'fg_fill', '548235')
-    cell = ws1['I1']
-    cell.font = cell.font.copy(bold=True, italic=False)
-
-    # todo: 5/6/7 manual review notice needs auto insert from ws3
-    # manual review notification
-    ws1.cell(row=1, column=10).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=1, start_column=10, end_row=1, end_column=28)
-    ws1.cell(row=1, column=10).value = ' * There are no test cases requiring manual review!'
-    set_appearance(ws1, 1, 10, 'font_color', '000000')
-    set_appearance(ws1, 1, 10, 'fg_fill', 'F2F2F2')
-    cell = ws1['J1']
     cell.font = cell.font.copy(bold=False, italic=True)
 
 
@@ -1425,7 +1321,7 @@ def create_summary_charts():
     cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
     p_chart.set_categories(cats)
     p_chart.shape = 4
-    p_chart.title = 'Protection Profile Scores (Precision & Recall)'
+    p_chart.title = 'Protection Profile Scores (Precision & Recall) - Unweighted'
     # auto_axis = True
     p_chart.y_axis.scaling.min = 0
     p_chart.y_axis.scaling.max = 1
@@ -1437,173 +1333,17 @@ def create_summary_charts():
 
 
     #################
-    # todo: 5/13 new ... adjust for desired colors
+    # todo: 5/13 KEEP!!!!! ... adjust for desired colors
     # series = p_chart.series[1]
     # fill = PatternFillProperties(prst="pct5")
     # fill.foreground = ColorChoice(prstClr="red")
     # fill.background = ColorChoice(prstClr="blue")
     # series.graphicalProperties.pattFill = fill
-
-
     #################
-
 
     p_chart += c2
 
     ws1.add_chart(p_chart, 'H2')
-
-    '''
-    # precision
-    p_chart = BarChart()
-    p_chart.type = 'col'
-    p_chart.style = 11
-    p_chart.y_axis.title = 'Precision'
-    p_chart.x_axis.title = 'CWE Number'
-    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
-    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    p_chart.add_data(precision_data, titles_from_data=True)
-    p_chart.set_categories(cats)
-    p_chart.shape = 4
-    p_chart.title = 'Protection Profile Scores'
-    # auto_axis = True
-    p_chart.y_axis.scaling.min = 0
-    p_chart.y_axis.scaling.max = 1
-    # p_chart.height = 15
-    # p_chart.width = 45
-    p_chart.height = 15
-    p_chart.width = 40
-    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
-    ws1.add_chart(p_chart, 'H33')
-    '''
-
-
-def create_summary_charts_ORIGINAL():
-    c2 = LineChart()
-    v2 = Reference(ws1, min_col=8, min_row=2, max_row=53)
-    c2.add_data(v2, titles_from_data=False, from_rows=False)
-    # c2.y_axis.axId = 200
-    # c2.y_axis.title = "Humans"
-    c2.y_axis.scaling.min = 0
-    c2.y_axis.scaling.max = 1
-    # c2.legend = None
-    c2.y_axis.crosses = "max"
-    s2 = c2.series[0]
-    s2.graphicalProperties.line.solidFill = 'FF0000'
-    s2.graphicalProperties.line.dashStyle = 'dash'
-    # s2.graphicalProperties.line.dashStyle = 'lgDash'
-    s2.graphicalProperties.line.width = 10000  # width in EMUs
-
-    s2.dataLabels = DataLabelList()
-    s2.dataLabels.showVal = True
-
-    # recall
-    p_and_r_chart = BarChart()
-    p_and_r_chart.type = 'col'
-    # p_and_r_chart.style = 11 original
-    p_and_r_chart.style = 5
-    p_and_r_chart.y_axis.title = 'Precision & Recall'
-    p_and_r_chart.x_axis.title = 'CWE Number'
-    recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
-    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    p_and_r_chart.add_data(recall_data, titles_from_data=True)
-    p_and_r_chart.set_categories(cats)
-    p_and_r_chart.shape = 4
-    p_and_r_chart.title = 'Protection Profile Scores (Precision & Recall)'
-    # auto_axis = True
-    p_and_r_chart.y_axis.scaling.min = 0
-    p_and_r_chart.y_axis.scaling.max = 1
-    # p_and_r_chart.height = 15
-    # p_and_r_chart.width = 45
-    p_and_r_chart.height = 15
-    p_and_r_chart.width = 40
-    # p_and_r_chart.set_x_axis({'num_font':  {'rotation': 270}})
-
-
-    #################
-    # todo: 5/13 new ... adjust for desired colors
-    # series = p_and_r_chart.series[1]
-    # fill = PatternFillProperties(prst="pct5")
-    # fill.foreground = ColorChoice(prstClr="red")
-    # fill.background = ColorChoice(prstClr="blue")
-    # series.graphicalProperties.pattFill = fill
-
-
-    #################
-
-
-    p_and_r_chart += c2
-
-    ws1.add_chart(p_and_r_chart, 'H2')
-
-    '''
-    # precision
-    p_chart = BarChart()
-    p_chart.type = 'col'
-    p_chart.style = 11
-    p_chart.y_axis.title = 'Precision'
-    p_chart.x_axis.title = 'CWE Number'
-    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
-    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    p_chart.add_data(precision_data, titles_from_data=True)
-    p_chart.set_categories(cats)
-    p_chart.shape = 4
-    p_chart.title = 'Protection Profile Scores'
-    # auto_axis = True
-    p_chart.y_axis.scaling.min = 0
-    p_chart.y_axis.scaling.max = 1
-    # p_chart.height = 15
-    # p_chart.width = 45
-    p_chart.height = 15
-    p_chart.width = 40
-    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
-    ws1.add_chart(p_chart, 'H33')
-    '''
-
-
-def create_summary_charts_ORIGINAL_1():
-    # recall
-    p_and_r_chart = BarChart()
-    p_and_r_chart.type = 'col'
-    p_and_r_chart.style = 11
-    p_and_r_chart.y_axis.title = 'Precision & Recall'
-    p_and_r_chart.x_axis.title = 'CWE Number'
-    recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=7)
-    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    p_and_r_chart.add_data(recall_data, titles_from_data=True)
-    p_and_r_chart.set_categories(cats)
-    p_and_r_chart.shape = 4
-    p_and_r_chart.title = 'Protection Profile Scores (Precision & Recall)'
-    # auto_axis = True
-    p_and_r_chart.y_axis.scaling.min = 0
-    p_and_r_chart.y_axis.scaling.max = 1
-    # p_and_r_chart.height = 15
-    # p_and_r_chart.width = 45
-    p_and_r_chart.height = 15
-    p_and_r_chart.width = 40
-    # p_and_r_chart.set_x_axis({'num_font':  {'rotation': 270}})
-    ws1.add_chart(p_and_r_chart, 'H2')
-
-    # precision
-    p_chart = BarChart()
-    p_chart.type = 'col'
-    p_chart.style = 11
-    p_chart.y_axis.title = 'Precision'
-    p_chart.x_axis.title = 'CWE Number'
-    precision_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
-    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
-    p_chart.add_data(precision_data, titles_from_data=True)
-    p_chart.set_categories(cats)
-    p_chart.shape = 4
-    p_chart.title = 'Protection Profile Scores'
-    # auto_axis = True
-    p_chart.y_axis.scaling.min = 0
-    p_chart.y_axis.scaling.max = 1
-    # p_chart.height = 15
-    # p_chart.width = 45
-    p_chart.height = 15
-    p_chart.width = 40
-    # p_chart.set_x_axis({'num_font':  {'rotation': 270}})
-    ws1.add_chart(p_chart, 'H33')
 
 
 def dedup_multi_dim_list(mylist):
@@ -1821,8 +1561,8 @@ if __name__ == '__main__':
 
     # ---------------
     # write to sheets
-    collect_hit_data(suite_data)
-    write_xml_data(suite_data)
+    # collect_hit_data(suite_data)
+    # write_xml_data(suite_data)
     #---------------
 
     # summary sheet
