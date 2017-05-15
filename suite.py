@@ -146,7 +146,7 @@ class Suite(object):
         self.precision_score = 0
         # recall
         self.recall_values_per_cwe = {}
-        self.recall_accumulated_value = 0
+        self.recall_accumulated_values = 0
         self.recall_accumulated_count = 0
         self.recall_average = 0
         self.recall_score = 0

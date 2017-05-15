@@ -14,10 +14,6 @@ from openpyxl import load_workbook, drawing
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, LineChart, Reference, Series
 
-from openpyxl.drawing import shape
-
-
-
 from openpyxl.chart.label import DataLabelList
 from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 from operator import itemgetter
@@ -33,12 +29,6 @@ WID_DELIMITER_FORTIFY = ':'
 def format_workbook():
     hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'SCORE', 'Opps', '%', 'Opportunities']
 
-    '''
-    ws1.protect()	
-    ws2.protect()	
-    ws3.protect()	
-    '''
-
     # todo: can do range for all here
     # set varying col widths for sheet 1
     ws1.column_dimensions['A'].width = 8
@@ -50,7 +40,8 @@ def format_workbook():
     ws1.column_dimensions['G'].width = 8
     ws1.column_dimensions['H'].width = 22
     ws1.column_dimensions['I'].width = 8
-    ws1.column_dimensions['AC'].width = 12
+    # ws1.column_dimensions['AC'].width = 12 helper col for p
+    # ws1.column_dimensions['AB'].width = 12 helper col for r
     ws1.sheet_view.zoomScale = 80
     ws1.sheet_view.showGridLines = False
     # ws1.sheet_properties.tabColor = "E6B8B7"
@@ -121,8 +112,8 @@ def format_workbook():
     ws5.sheet_view.showGridLines = False
 
     # todo consider hiding the helper columns for average
-    # for col in ['A', 'B', 'C']:
-    #     worksheet.column_dimensions[col].hidden = True
+    for col in ['AC', 'AD']:
+        ws1.column_dimensions[col].hidden = True
 
 
 def count_kdm_test_cases(fpr_name):
@@ -1060,12 +1051,18 @@ def write_summary_data(scan_data, ws):
 
 
 def write_averages_to_summary_sheet():
+    # write helper col headers
+    set_appearance(ws1, 1, 29, 'fg_fill', 'FFFFFF')
+    set_appearance(ws1, 1, 30, 'fg_fill', 'FFFFFF')
+    ws1.cell(row=1, column=29).value = 'P(avg)= ' + '%0.2f' % suite_data.precision_average
+    ws1.cell(row=1, column=30).value = 'R(avg)= ' + '%0.2f' % suite_data.recall_average
+    # write helper col p and r averages
     for row in ws1.iter_rows():
         if row[0].value is not None and row[0].row > 1:
-            ws1.cell(row=row[0].row, column=8).value = suite_data.precision_average
-            set_appearance(ws1, row[0].row, 8, 'font_color', '00FFFF', False)
-            ws1.cell(row=row[0].row, column=9).value = suite_data.recall_average
-            set_appearance(ws1, row[0].row, 9, 'font_color', '00FFFF', False)
+            ws1.cell(row=row[0].row, column=29).value = suite_data.precision_average
+            set_appearance(ws1, row[0].row, 29, 'font_color', 'FFFFFF', False)
+            ws1.cell(row=row[0].row, column=30).value = suite_data.recall_average
+            set_appearance(ws1, row[0].row, 30, 'font_color', 'FFFFFF', False)
 
 
 def write_weighted_averages(suite_data, ws):
@@ -1076,8 +1073,6 @@ def write_weighted_averages(suite_data, ws):
 
     row = 1
     offset = 7
-    valid_precision_count = 0
-    recall_count = 0
 
     # write column headers
     for idx, title in enumerate(score_sheet_titles_addendum):
@@ -1106,7 +1101,7 @@ def write_weighted_averages(suite_data, ws):
                     ws.cell(row=cell.row, column=offset + 4).number_format = '0.00'
                     ws.cell(row=cell.row, column=offset + 4).alignment = Alignment(horizontal="right")
                     set_appearance(ws, cell.row, offset + 4, 'fg_fill', 'EDEDED')  # light gray
-                    set_appearance(ws, cell.row, offset + 4, 'font_color', 'C00000')  # dark red
+                    set_appearance(ws, cell.row, offset + 4, 'font_color', '833C0C')  # dark brown
 
                     # p-final
                     if row_idx[5].value == 'N/A':
@@ -1121,13 +1116,33 @@ def write_weighted_averages(suite_data, ws):
                     ws.cell(row=cell.row, column=offset + 2).alignment = Alignment(horizontal="right")
                     set_appearance(ws, cell.row, offset + 2, 'fg_fill', 'DDEBF7')  # light blue
 
+                    # r-final
+                    if row_idx[6].value == 0:
+                        set_appearance(ws, cell.row, offset + 5, 'font_color', '808080')  # med gray
+                    else:
+                        set_appearance(ws, cell.row, offset + 5, 'font_color', 'C00000')  # dark red
+
+                    suite_data.recall_values_per_cwe[cwe] = weight * row_idx[6].value
+                    ws.cell(row=cell.row, column=offset + 5).value = suite_data.recall_values_per_cwe[cwe]
+                    ws.cell(row=cell.row, column=offset + 5).number_format = '0.00'
+                    ws.cell(row=cell.row, column=offset + 5).alignment = Alignment(horizontal="right")
+                    set_appearance(ws, cell.row, offset + 5, 'fg_fill', 'EDEDED')  # light blue
+
                     # p-avg
-                    # only average precision if it is valid todo: this may not be fail and need re-evaluated
                     if suite_data.precision_values_per_cwe[cwe] != 'N/A':
                         suite_data.precision_accumulated_valid_count += 1
                         suite_data.precision_accumulated_valid_values += suite_data.precision_values_per_cwe[cwe]
                         suite_data.precision_average = suite_data.precision_accumulated_valid_values \
                                                        / suite_data.precision_accumulated_valid_count
+
+                    # r-avg
+                    suite_data.recall_accumulated_count += 1
+                    suite_data.recall_accumulated_values += suite_data.recall_values_per_cwe[cwe]
+                    suite_data.recall_average = suite_data.recall_accumulated_values \
+                                                / suite_data.recall_accumulated_count
+
+    # todo 5/15/7 consolidate someo of these
+    # p-avg display
     ws.merge_cells(start_row=2, start_column=offset + 3, end_row=ws.max_row, end_column=offset + 3)
     ws.cell(row=2, column=offset + 3).value = suite_data.precision_average
     ws.cell(row=2, column=offset + 3).number_format = '0.00'
@@ -1135,6 +1150,14 @@ def write_weighted_averages(suite_data, ws):
     set_appearance(ws, 2, offset + 3, 'font_color', '0000FF')  # blue
     set_appearance(ws, 2, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
     set_appearance(ws, ws.max_row, offset + 3, 'fg_fill', 'DDEBF7')  # light blue
+    # r-avg display
+    ws.merge_cells(start_row=2, start_column=offset + 6, end_row=ws.max_row, end_column=offset + 6)
+    ws.cell(row=2, column=offset + 6).value = suite_data.recall_average
+    ws.cell(row=2, column=offset + 6).number_format = '0.00'
+    ws.cell(row=2, column=offset + 6).alignment = Alignment(horizontal="center", vertical='center')
+    set_appearance(ws, 2, offset + 6, 'font_color', 'C00000')  # dark red
+    set_appearance(ws, 2, offset + 6, 'fg_fill', 'EDEDED')  # light gray
+    set_appearance(ws, ws.max_row, offset + 6, 'fg_fill', '808080')  # medium gray
 
 
 def set_cwe_weightings(suite_dat):
@@ -1167,7 +1190,7 @@ def write_score_and_message_to_summary(ws):
     cell.font = cell.font.copy(bold=True, italic=False)
     # manual review notification
     ws.cell(row=1, column=10).alignment = Alignment(horizontal="left", vertical='center')
-    ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=29)
+    ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=28)
     ws.cell(row=1, column=10).value = suite_data.manual_review_recommendataion
     set_appearance(ws, 1, 10, 'font_color', '000000')  # black
     set_appearance(ws, 1, 10, 'fg_fill', 'F2F2F2')  # light gray
@@ -1276,7 +1299,7 @@ def write_summary_data_ORIGINAL(scan_data):
     # todo: 5/6/7 manual review notice needs auto insert from ws3
     # manual review notification
     ws1.cell(row=1, column=10).alignment = Alignment(horizontal="left", vertical='center')
-    ws1.merge_cells(start_row=1, start_column=10, end_row=1, end_column=29)
+    ws1.merge_cells(start_row=1, start_column=10, end_row=1, end_column=28)
     ws1.cell(row=1, column=10).value = ' * There are no test cases requiring manual review!'
     set_appearance(ws1, 1, 10, 'font_color', '000000')
     set_appearance(ws1, 1, 10, 'fg_fill', 'F2F2F2')
@@ -1332,9 +1355,18 @@ def test_chart2():
 
 
 def create_summary_charts():
+    #  todo: 5/15/7 this needs cleaned up
     c2 = LineChart()
-    v2 = Reference(ws1, min_col=8, min_row=2, max_row=53)
-    c2.add_data(v2, titles_from_data=False, from_rows=False)
+    # p-avg
+    # v2 = Reference(ws1, min_col=8, min_row=2, max_row=53)
+    v2 = Reference(ws1, min_col=29, min_row=1, max_row=53)
+    # c2.add_data(v2, titles_from_data=False, from_rows=False)
+    c2.add_data(v2, titles_from_data=True, from_rows=False)
+    # r-avg
+    # v2 = Reference(ws1, min_col=9, min_row=2, max_row=53)
+    v2 = Reference(ws1, min_col=30, min_row=1, max_row=53)
+    # c2.add_data(v2, titles_from_data=False, from_rows=False)
+    c2.add_data(v2, titles_from_data=True, from_rows=False)
     # c2.y_axis.axId = 200
     # c2.y_axis.title = "Humans"
     c2.y_axis.scaling.min = 0
@@ -1342,24 +1374,19 @@ def create_summary_charts():
     # c2.legend = None
     c2.y_axis.crosses = "max"
 
+    # precision average
     s2 = c2.series[0]
-    s2.graphicalProperties.line.solidFill = '4572A7'
+    s2.graphicalProperties.line.solidFill = '4572A7'  # dark blue
     s2.graphicalProperties.line.dashStyle = 'dash'
-    # s2.graphicalProperties.line.dashStyle = 'lgDash'
+    s2.graphicalProperties.line.width = 10000  # width in EMUs
+    # recall average
+    s2 = c2.series[1]
+    s2.graphicalProperties.line.solidFill = 'C65911'  # dark orange
+    s2.graphicalProperties.line.dashStyle = 'dash'
     s2.graphicalProperties.line.width = 10000  # width in EMUs
 
-    ##############
-    # s2 = c2.series[1]
-    # s2.graphicalProperties.line.solidFill = '4572A7'
-    # s2.graphicalProperties.line.dashStyle = 'dash'
-    # s2.graphicalProperties.line.width = 10000  # width in EMUs
-    ##############
-
-
-
-
-    s2.dataLabels = DataLabelList()
-    s2.dataLabels.showVal = True
+    # s2.dataLabels = DataLabelList()
+    # s2.dataLabels.showVal = True
 
     # precision
     p_chart = BarChart(gapWidth=50)
@@ -1375,14 +1402,14 @@ def create_summary_charts():
     p_chart.add_data(recall_data, titles_from_data=True)
     # p_chart_s1 = p_chart.series[1]
 
-
+    # precision bars
     s5 = p_chart.series[0]
     s5.graphicalProperties.line.solidFill = 'FFFFFF'
-    s5.graphicalProperties.solidFill = '4572A7'
-
+    s5.graphicalProperties.solidFill = '4572A7'  # dark blue
+    #recall bars
     s5 = p_chart.series[1]
     s5.graphicalProperties.line.solidFill = 'FFFFFF'
-    s5.graphicalProperties.solidFill = '93A9CF'
+    s5.graphicalProperties.solidFill = '93A9CF'  # light blue
 
     # p_chart.dataLabels = DataLabelList()
     #p_chart.dataLabels.showVal = True
@@ -1794,8 +1821,8 @@ if __name__ == '__main__':
 
     # ---------------
     # write to sheets
-    # collect_hit_data(suite_data)
-    # write_xml_data(suite_data)
+    collect_hit_data(suite_data)
+    write_xml_data(suite_data)
     #---------------
 
     # summary sheet
@@ -1805,7 +1832,6 @@ if __name__ == '__main__':
 
     # chart for summary sheet
     create_summary_charts()
-
 
     wb.active = 0
     wb.save(scorecard)
