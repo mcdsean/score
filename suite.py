@@ -7,7 +7,6 @@ FVDL_NAME = "audit.fvdl"
 SCORE_THRESHOLD_UNWEIGHTED = 0.45
 SCORE_THRESHOLD_WEIGHTED = 0.45
 
-
 class TestCase(object):
     # def __init__(self, filename):
     def __init__(self, test_case_name, tc_type, true_false):

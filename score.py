@@ -111,7 +111,7 @@ def format_workbook():
     ws5.column_dimensions['M'].width = 5
     ws5.column_dimensions['AC'].width = 12
     ws5.freeze_panes = ws5['H2']
-    ws5.sheet_view.zoomScale = 80
+    ws5.sheet_view.zoomScale = 70
     ws5.sheet_view.showGridLines = False
 
     # todo consider hiding the helper columns for average
@@ -1044,6 +1044,7 @@ def write_summary_data(scan_data, ws):
         #write_unweighted_averages(suite_data, ws)
         write_weighted_averages(suite_data, ws)
         write_averages_to_summary_sheet()
+        write_score_and_message_to_score_sheet(suite_data, ws)
 
     # write totals
     ws.cell(row=row + 1, column=2).value = suite_data.suite_tc_count_true
@@ -1059,8 +1060,8 @@ def write_averages_to_summary_sheet():
     # write helper col headers
     set_appearance(ws1, 1, 29, 'fg_fill', 'FFFFFF')
     set_appearance(ws1, 1, 30, 'fg_fill', 'FFFFFF')
-    ws1.cell(row=1, column=29).value = 'P(avg)= ' + '%0.2f' % suite_data.precision_average_unweighted
-    ws1.cell(row=1, column=30).value = 'R(avg)= ' + '%0.2f' % suite_data.recall_average_unweighted
+    ws1.cell(row=1, column=29).value = 'Pavg= ' + '%0.2f' % suite_data.precision_average_unweighted
+    ws1.cell(row=1, column=30).value = 'Ravg= ' + '%0.2f' % suite_data.recall_average_unweighted
     # write helper col p and r averages
     for row in ws1.iter_rows():
         if row[0].value is not None and row[0].row > 1:
@@ -1271,10 +1272,10 @@ def set_cwe_weightings(suite_dat):
         # todo: 5/12/7 remove this, for testing only. assumption is that
         # todo: (cont) for each cwe, same weighting applies to both precisino and recall?
 
-        if cwe == 'CWE194':
-            suite_dat.weightings_per_cwe_dict[cwe] = .5 
-        else:
-            suite_dat.weightings_per_cwe_dict[cwe] = 0.75  # todo: 5/15/7 temp for testing
+        # if cwe == 'CWE194':
+        #     suite_dat.weightings_per_cwe_dict[cwe] = .5
+        # else:
+        #     suite_dat.weightings_per_cwe_dict[cwe] = 0.75  # todo: 5/15/7 temp for testing
 
 
 def write_score_and_message_to_summary(ws):
@@ -1299,6 +1300,37 @@ def write_score_and_message_to_summary(ws):
     set_appearance(ws, 1, 10, 'fg_fill', 'F2F2F2')  # light gray
     cell = ws['J1']
     cell.font = cell.font.copy(bold=False, italic=True)
+
+
+def write_score_and_message_to_score_sheet(suite_dat, ws):
+    col_offset = 7
+
+    # score label
+    ws.cell(row=1, column=7 + col_offset).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=7 + col_offset).value = 'SCORE='
+    set_appearance(ws, 1, 7 + col_offset, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 7 + col_offset, 'fg_fill', 'F2F2F2')  # light gray
+    # score value
+    ws.cell(row=1, column=8 + col_offset).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=8 + col_offset).value = '%0.2f' % (
+    (suite_dat.precision_average_unweighted + suite_dat.recall_average_unweighted) / 2)
+    set_appearance(ws, 1, 8 + col_offset, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 8 + col_offset, 'fg_fill', 'F2F2F2')  # light gray
+    # threshold label
+    ws.cell(row=1, column=9 + col_offset).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=9 + col_offset).value = 'THRESH='
+    set_appearance(ws, 1, 9 + col_offset, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 9 + col_offset, 'fg_fill', 'FFE699')  # light yellow
+    # threshold value
+    ws.cell(row=1, column=10 + col_offset).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=10 + col_offset).value = suite_dat.overall_required_threshold_unweighted
+    set_appearance(ws, 1, 10 + col_offset, 'font_color', '000000')  # black
+    set_appearance(ws, 1, 10 + col_offset, 'fg_fill', 'F2F2F2')  # light gray
+    # pass/fail notification
+    ws.cell(row=1, column=11 + col_offset).alignment = Alignment(horizontal="center", vertical='center')
+    ws.cell(row=1, column=11 + col_offset).value = suite_dat.pass_fail
+    set_appearance(ws, 1, 11 + col_offset, 'font_color', 'FFFFFF')  # white
+    set_appearance(ws, 1, 11 + col_offset, 'fg_fill', '008000')  # green
 
 
 def set_appearance(ws_id, row_id, col_id, style_id, color_id, border=True):
@@ -1358,7 +1390,7 @@ def create_summary_charts():
     # p_chart.style = 11 original
     p_chart.style = 5
     p_chart.y_axis.title = 'Precision & Recall'
-    p_chart.x_axis.title = 'CWE Number'
+    # p_chart.x_axis.title = 'CWE Number'
 
     recall_data = Reference(ws1, min_col=6, min_row=1, max_row=52, max_col=6)
     p_chart.add_data(recall_data, titles_from_data=True)
@@ -1379,13 +1411,6 @@ def create_summary_charts():
     #p_chart.dataLabels.showVal = True
 
 
-    # fill = PatternFillProperties(prst="pct5")
-    # #fill.foreground = ColorChoice(prstClr="red")E6B8B7
-    # #fill.background = ColorChoice(prstClr="blue")
-    # #fill.foreground = ColorChoice(prstClr='medSeaGreen')
-    # fill.background = ColorChoice(prstClr="medSeaGreen")
-    # p_chart_s1.graphicalProperties.pattFill = fill
-
     cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
     p_chart.set_categories(cats)
     p_chart.shape = 4
@@ -1393,25 +1418,46 @@ def create_summary_charts():
     # auto_axis = True
     p_chart.y_axis.scaling.min = 0
     p_chart.y_axis.scaling.max = 1
-    # p_chart.height = 15
     # p_chart.width = 45
-    p_chart.height = 15
+    # p_chart.height = 15
+    p_chart.height = 13
     p_chart.width = 40
     #p_chart.set_x_axis({'num_font':  {'rotation': 270}})
 
 
-    #################
-    # todo: 5/13 KEEP!!!!! ... adjust for desired colors
-    # series = p_chart.series[1]
-    # fill = PatternFillProperties(prst="pct5")
-    # fill.foreground = ColorChoice(prstClr="red")
-    # fill.background = ColorChoice(prstClr="blue")
-    # series.graphicalProperties.pattFill = fill
-    #################
-
     p_chart += c2
 
     ws1.add_chart(p_chart, 'H2')
+
+    ######################
+    tcc_true_bar_chart = BarChart(gapWidth=0)
+    tcc_true_bar_chart.type = 'col'
+    tcc_true_bar_chart.style = 5
+    tcc_true_bar_chart.y_axis.title = 'Tese Case Counts (True)'
+    # tcc_true_bar_chart.x_axis.title = 'CWE Number'
+
+    tcc_true_data = Reference(ws1, min_col=2, min_row=1, max_row=52, max_col=2)
+    tcc_true_bar_chart.add_data(tcc_true_data, titles_from_data=True)
+
+    s33 = tcc_true_bar_chart.series[0]
+    s33.graphicalProperties.line.solidFill = '000000'
+    s33.graphicalProperties.line.width = 1000  # width in EMUs
+    s33.graphicalProperties.solidFill = 'E6B8B7'  # light red
+    # s33.graphicalProperties.solidFill = '548235'  # dark green
+
+    cats = Reference(ws1, min_col=1, min_row=2, max_row=52)
+    tcc_true_bar_chart.set_categories(cats)
+    tcc_true_bar_chart.shape = 4
+    tcc_true_bar_chart.title = 'Test Case Distribution'
+    # tcc_true_bar_chart.y_axis.scaling.min = 0
+    # tcc_true_bar_chart.y_axis.scaling.max = 1
+    # tcc_true_bar_chart.height = 15
+    tcc_true_bar_chart.height = 10.4
+    tcc_true_bar_chart.width = 40
+
+    ws1.add_chart(tcc_true_bar_chart, 'H32')
+
+    #####################
 
 
 def create_score_charts():
@@ -1445,7 +1491,7 @@ def create_score_charts():
     p_r_bar_chart.type = 'col'
     p_r_bar_chart.style = 5
     p_r_bar_chart.y_axis.title = 'Precision & Recall'
-    p_r_bar_chart.x_axis.title = 'CWE Number'
+    #p_r_bar_chart.x_axis.title = 'CWE Number'
 
     # precision
     p_r_data = Reference(ws5, min_col=6 + p_offset, min_row=1, max_row=52, max_col=6 + p_offset)
@@ -1479,6 +1525,34 @@ def create_score_charts():
     # add charts
     p_r_bar_chart += p_r_average_line_chart
     ws5.add_chart(p_r_bar_chart, 'N2')
+
+    ######################
+    tcc_true_bar_chart = BarChart(gapWidth=0)
+    tcc_true_bar_chart.type = 'col'
+    tcc_true_bar_chart.style = 5
+    tcc_true_bar_chart.y_axis.title = 'Tese Case Counts (True)'
+    # tcc_true_bar_chart.x_axis.title = 'CWE Number'
+
+    tcc_true_data = Reference(ws5, min_col=2, min_row=1, max_row=52, max_col=2)
+    tcc_true_bar_chart.add_data(tcc_true_data, titles_from_data=True)
+
+    s33 = tcc_true_bar_chart.series[0]
+    s33.graphicalProperties.line.solidFill = '000000'
+    s33.graphicalProperties.line.width = 1000  # width in EMUs
+    s33.graphicalProperties.solidFill = 'E6B8B7'  # light red
+    # s33.graphicalProperties.solidFill = '548235'  # dark green
+
+    cats = Reference(ws5, min_col=1, min_row=2, max_row=52)
+    tcc_true_bar_chart.set_categories(cats)
+    tcc_true_bar_chart.shape = 4
+    tcc_true_bar_chart.title = 'Test Case Distribution'
+    # tcc_true_bar_chart.height = 15
+    tcc_true_bar_chart.height = 11.3
+    tcc_true_bar_chart.width = 40
+
+    ws5.add_chart(tcc_true_bar_chart, 'N31')
+
+    #####################
 
 
 def dedup_multi_dim_list(mylist):
@@ -1696,8 +1770,8 @@ if __name__ == '__main__':
 
     # ---------------
     # write to sheets
-    # collect_hit_data(suite_data)
-    # write_xml_data(suite_data)
+    collect_hit_data(suite_data)
+    write_xml_data(suite_data)
     #---------------
 
     # summary sheet
