@@ -707,34 +707,33 @@ def create_hit_charts(g2b_idx, g2b_row_start):
     p_chart.grouping = "stacked"
     p_chart.overlap = 100
     p_chart.title = 'Function Hits vs. Opportunities (Juliet/False Only)'
-    p_chart.y_axis.title = 'Hits'
+    p_chart.y_axis.title = 'Total Hits per Function Group'
     # p_chart.x_axis.title = 'CWE Number'
 
-
-    g2b_data = Reference(ws4, min_col=2, min_row=8, max_row=15, max_col=3)
-    # g2b_data = Reference(ws4, min_col=2, min_row=g2b_row_start, max_row=g2b_idx-1, max_col=3)
+    # g2b_data = Reference(ws4, min_col=2, min_row=8, max_row=15, max_col=3)
+    g2b_data = Reference(ws4, min_col=2, min_row=1, max_row=15, max_col=2)
+    p_chart.add_data(g2b_data, titles_from_data=True)
+    g2b_data = Reference(ws4, min_col=3, min_row=1, max_row=15, max_col=3)
     p_chart.add_data(g2b_data, titles_from_data=True)
     # recall_data = Reference(ws4, min_col=7, min_row=1, max_row=52, max_col=7)
     # p_chart.add_data(recall_data, titles_from_data=True)
-
 
     s5 = p_chart.series[0]
     s5.graphicalProperties.line.solidFill = 'FFFFFF'
     s5.graphicalProperties.solidFill = '4572A7'  # dark blue
     #
     s5 = p_chart.series[1]
-    s5.legend = 'hello'
     s5.graphicalProperties.line.solidFill = 'FFFFFF'
     s5.graphicalProperties.solidFill = '93A9CF'  # light blue
 
     # cats = Reference(ws4, min_col=1, min_row=g2b_row_start, max_row=g2b_idx-1)
-    cats = Reference(ws4, min_col=1, min_row=8, max_row=15)
+    cats = Reference(ws4, min_col=1, min_row=2, max_row=15)
     p_chart.set_categories(cats)
     # p_chart.shape = 4
     # p_chart.y_axis.scaling.min = 0
     # p_chart.y_axis.scaling.max = 1
-    # p_chart.height = 13
-    # p_chart.width = 40
+    p_chart.height = 13
+    p_chart.width = 20
 
     ws4.add_chart(p_chart, 'J2')
 
