@@ -28,6 +28,7 @@ WID_DELIMITER_FORTIFY = ':'
 
 def format_workbook():
     hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'SCORE', 'Opps', '%', 'Opportunities']
+    # hit_analytics_titles = ['Encapsulating Function', 'Hits', 'Opps', '%-Hits', 'Group', 'HITS', 'OPPS', '%-grp']
 
     # todo: can do range for all here
     # set varying col widths for sheet 1
@@ -91,10 +92,20 @@ def format_workbook():
     # analytics
     ws4.freeze_panes = ws4['A2']
     ws4.sheet_view.zoomScale = 80
-    ws4.column_dimensions['A'].width = 15
-    ws4.column_dimensions['B'].width = 8
-    ws4.column_dimensions['C'].width = 8
+    ws4.column_dimensions['A'].width = 18
+    ws4.column_dimensions['B'].width = 6
+    ws4.column_dimensions['C'].width = 6
+    ws4.column_dimensions['D'].width = 6
+    ws4.column_dimensions['E'].width = 9
+    ws4.column_dimensions['F'].width = 6
+    ws4.column_dimensions['G'].width = 6
+    ws4.column_dimensions['H'].width = 6
     ws4.sheet_view.showGridLines = False
+    # for idx, title in enumerate(hit_analytics_titles):
+    #     set_appearance(ws4, 1, idx + 1, 'fg_fill', 'C9C9C9')
+    #     ws4.cell(row=1, column=idx + 1).value = title
+    #     ws4.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
     # SCORE
     ws5.column_dimensions['A'].width = 8
     ws5.column_dimensions['B'].width = 8
@@ -594,16 +605,90 @@ def collect_hit_data(suite_dat):
 
     list_of_dicts = sorted(list_of_dicts, key=itemgetter('name'))
 
+    b2g_idx, b2g_row_start = 0, 0
+    g2b_idx, g2b_row_start = 0, 0
+    g2b_hits_total, b2g_hits_total = 0, 0
+    g2b_opps_total, b2g_opps_total = 0, 0
+
+    #################################
+    hit_analytics_titles = ['Encapsulating Function', 'Hits', 'Opps', '%-Hits', 'Group', 'HITS', 'OPPS', '%-grp']
+    # hit_analytics_titles = ['Encapsulating Function', 'Hits', 'Misses', 'Opps', '%-Hits', 'Group', 'HITS', 'OPPS', '%-grp']
+    for idx, title in enumerate(hit_analytics_titles):
+        set_appearance(ws4, 1, idx + 1, 'fg_fill', 'C9C9C9')
+        ws4.cell(row=1, column=idx + 1).value = title
+        ws4.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+
+
     # write to 'hit analytics' summary sheet
     for idx, hits1 in enumerate(list_of_dicts):
+
         if 'helperGood' in hits1['name']:
             # todo: 5/11/7 log all of these and provide used more specifics w/ location, etc.
             suite_data.manual_review_recommendataion = ' * Manual Review Required for ' + hits1['name']
-        ws4.cell(row=idx + 1, column=1).value = hits1['name']
-        ws4.cell(row=idx + 1, column=2).value = hits1['hits']
-        ws4.cell(row=idx + 1, column=3).value = hits1['opps']
 
-    ##############################
+        # write summary data
+        percent = hits1['hits'] / hits1['opps'] * 100
+        ws4.cell(row=idx + 2, column=1).value = hits1['name']
+        ws4.cell(row=idx + 2, column=2).value = hits1['hits']
+        ws4.cell(row=idx + 2, column=3).value = hits1['opps']
+        ws4.cell(row=idx + 2, column=4).value = '%0.0f' % percent + '%'
+        ws4.cell(row=idx + 2, column=5).value = hits1['name']
+        # get row indexing for B2G
+        if 'B2G' in hits1['name']:
+            if b2g_row_start == 0:
+                b2g_row_start = idx + 2
+            b2g_idx += 1
+
+            b2g_hits_total += hits1['hits']
+            b2g_opps_total += hits1['opps']
+            b2g_percent_total = b2g_hits_total / b2g_opps_total * 100
+            ws4.cell(row=b2g_row_start, column=6).value = b2g_hits_total
+            ws4.cell(row=b2g_row_start, column=7).value = b2g_opps_total
+            ws4.cell(row=b2g_row_start, column=8).value = '%0.0f' % b2g_percent_total + '%'
+        # get row indexing for G2B
+        elif 'G2B' in hits1['name']:
+            if g2b_row_start == 0:
+                g2b_row_start = idx + 2
+            g2b_idx += 1
+
+            g2b_hits_total += hits1['hits']
+            g2b_opps_total += hits1['opps']
+            g2b_percent_total = g2b_hits_total / g2b_opps_total * 100
+            ws4.cell(row=g2b_row_start, column=6).value = g2b_hits_total
+            ws4.cell(row=g2b_row_start, column=7).value = g2b_opps_total
+            ws4.cell(row=g2b_row_start, column=8).value = '%0.0f' % g2b_percent_total + '%'
+
+    # merge and align cells
+    for col_idx, hits1 in enumerate(list_of_dicts):
+        if col_idx > 4:
+            ws4.merge_cells(start_row=b2g_row_start, start_column=col_idx, end_row=b2g_row_start + b2g_idx - 1,
+                            end_column=col_idx)
+            ws4.merge_cells(start_row=g2b_row_start, start_column=col_idx, end_row=g2b_row_start + g2b_idx - 1,
+                            end_column=col_idx)
+            ws4.cell(row=b2g_row_start, column=col_idx).alignment = Alignment(horizontal="center", vertical='center')
+            ws4.cell(row=g2b_row_start, column=col_idx).alignment = Alignment(horizontal="center", vertical='center')
+
+    # color cells
+    for idx, hits1 in enumerate(list_of_dicts):
+        ws4.cell(row=idx + 2, column=4).alignment = Alignment(horizontal="center", vertical='center')
+        ws4.cell(row=idx + 2, column=5).alignment = Alignment(horizontal="center", vertical='center')
+        if 'B2G' in hits1['name']:
+            for col_idx, val in enumerate(hit_analytics_titles):
+                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'EDEDED')
+        elif 'G2B' in hits1['name']:
+            for col_idx, val in enumerate(hit_analytics_titles):
+                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'E2EFDA')
+        else:
+            for col_idx, val in enumerate(hit_analytics_titles):
+                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'D9E1F2')
+
+        ###########
+        ws4.cell(row=idx + 2, column=2).number_format = '#,##0'
+        ws4.cell(row=idx + 2, column=3).number_format = '#,##0'
+        ws4.cell(row=idx + 2, column=6).number_format = '#,##0'
+        ws4.cell(row=idx + 2, column=7).number_format = '#,##0'
+
+
 
     print('Writing hit data to sheet ... please stand by, thank you for your patience!')
     write_hit_data(suite_dat, hit_data)
@@ -1768,8 +1853,8 @@ if __name__ == '__main__':
     # get a summary of all used wids
     get_used_wids(suite_data)
 
-    # ---------------
     # write to sheets
+    # ---------------
     collect_hit_data(suite_data)
     write_xml_data(suite_data)
     #---------------
