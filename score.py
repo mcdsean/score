@@ -14,10 +14,16 @@ from openpyxl import load_workbook, drawing
 from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
 from openpyxl.chart import BarChart, LineChart, Reference, Series
 
-from openpyxl.chart.label import DataLabelList
-from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
+# from openpyxl.chart.label import DataLabelList
+# from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 from operator import itemgetter
 from hashlib import sha1
+# from openpyxl.chart.marker import DataPoint
+
+from openpyxl.chart import PieChart, ProjectedPieChart, Reference
+
+from openpyxl.chart.series import DataPoint
+
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
@@ -659,6 +665,11 @@ def collect_hit_data(suite_dat):
             ws4.cell(row=g2b_row_start, column=7).value = g2b_hits_total
             ws4.cell(row=g2b_row_start, column=8).value = g2b_opps_total
             ws4.cell(row=g2b_row_start, column=9).value = '%0.0f' % g2b_percent_total + '%'
+        else:
+            ws4.cell(row=idx + 2, column=7).value = hits1['hits']
+            ws4.cell(row=idx + 2, column=8).value = hits1['opps']
+            ws4.cell(row=idx + 2, column=9).value = '%0.0f' % percent + '%'
+
 
     # merge and align cells
     for col_idx, hits1 in enumerate(list_of_dicts):
@@ -675,15 +686,37 @@ def collect_hit_data(suite_dat):
         ws4.cell(row=idx + 2, column=4).alignment = Alignment(horizontal="center", vertical='center')
         ws4.cell(row=idx + 2, column=5).alignment = Alignment(horizontal="center", vertical='center')
         ws4.cell(row=idx + 2, column=6).alignment = Alignment(horizontal="center", vertical='center')
+        # todo: consolidate these coloring methods
         if 'B2G' in hits1['name']:
             for col_idx, val in enumerate(hit_analytics_titles):
-                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'EDEDED')
+                if col_idx == 1:  # hits
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'E2EFDA')  # light green
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '358254')  # dark green
+                elif col_idx == 2:  # misses
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FCE4D6')  # light red
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '990000')  # dark red
+                else:
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'F2F2F2')  # light gray
         elif 'G2B' in hits1['name']:
             for col_idx, val in enumerate(hit_analytics_titles):
-                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'C6E0B4')  # green
+                if col_idx == 1:  # hits
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'E2EFDA')  # light green
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '358254')  # dark green
+                elif col_idx == 2:  # misses
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FCE4D6')  # light red
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '990000')  # dark red
+                else:
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'D0CECE')  # dark gray
         else:
             for col_idx, val in enumerate(hit_analytics_titles):
-                set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'D9E1F2')
+                if col_idx == 1:  # hits
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'E2EFDA')  # light green
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '358254')  # dark green
+                elif col_idx == 2:  # misses
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FCE4D6')  # light red
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'font_color', '990000')  # dark red
+                else:
+                    set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FFFFFF')  # white
 
         ###########
         ws4.cell(row=idx + 2, column=2).number_format = '#,##0'
@@ -692,7 +725,7 @@ def collect_hit_data(suite_dat):
         ws4.cell(row=idx + 2, column=7).number_format = '#,##0'
         ws4.cell(row=idx + 2, column=8).number_format = '#,##0'
 
-        create_hit_charts(g2b_idx, g2b_row_start)
+    create_hit_charts(g2b_idx, g2b_row_start)
 
 
     print('Writing hit data to sheet ... please stand by, thank you for your patience!')
@@ -700,42 +733,70 @@ def collect_hit_data(suite_dat):
 
 
 def create_hit_charts(g2b_idx, g2b_row_start):
-    p_chart = BarChart(gapWidth=50)
+    hit_bar_chart = BarChart(gapWidth=50)
 
-    p_chart.type = "col"
-    p_chart.style = 12
-    p_chart.grouping = "stacked"
-    p_chart.overlap = 100
-    p_chart.title = 'Function Hits vs. Opportunities (Juliet/False Only)'
-    p_chart.y_axis.title = 'Total Hits per Function Group'
-    # p_chart.x_axis.title = 'CWE Number'
+    hit_bar_chart.type = "col"
+    hit_bar_chart.style = 12
+    hit_bar_chart.grouping = "stacked"
+    hit_bar_chart.overlap = 100
+    hit_bar_chart.title = 'Function Hits vs. Opportunities (Juliet/False Only)'
+    hit_bar_chart.y_axis.title = 'Total Hits per Group'
 
     # g2b_data = Reference(ws4, min_col=2, min_row=8, max_row=15, max_col=3)
     g2b_data = Reference(ws4, min_col=2, min_row=1, max_row=15, max_col=2)
-    p_chart.add_data(g2b_data, titles_from_data=True)
-    g2b_data = Reference(ws4, min_col=3, min_row=1, max_row=15, max_col=3)
-    p_chart.add_data(g2b_data, titles_from_data=True)
-    # recall_data = Reference(ws4, min_col=7, min_row=1, max_row=52, max_col=7)
-    # p_chart.add_data(recall_data, titles_from_data=True)
+    hit_bar_chart.add_data(g2b_data, titles_from_data=True)
 
-    s5 = p_chart.series[0]
-    s5.graphicalProperties.line.solidFill = 'FFFFFF'
-    s5.graphicalProperties.solidFill = '4572A7'  # dark blue
-    #
-    s5 = p_chart.series[1]
-    s5.graphicalProperties.line.solidFill = 'FFFFFF'
-    s5.graphicalProperties.solidFill = '93A9CF'  # light blue
+    g2b_data = Reference(ws4, min_col=3, min_row=1, max_row=15, max_col=3)
+    hit_bar_chart.add_data(g2b_data, titles_from_data=True)
+
+    s5 = hit_bar_chart.series[0]
+    s5.graphicalProperties.line.solidFill = '000000'
+    # s5.graphicalProperties.solidFill = '4572A7'  # dark blue
+    s5.graphicalProperties.solidFill = 'C5E0B4'  # light green
+
+    s5 = hit_bar_chart.series[1]
+    s5.graphicalProperties.line.solidFill = '000000'
+    # s5.graphicalProperties.solidFill = '93A9CF'  # light blue
+    s5.graphicalProperties.solidFill = 'F8CBAD'  # light orange
+
+    # pt = DataPoint(idx=7) todo: keep this for coloring the groups!
+    # #pt.graphicalProperties.pattFill = PatternFillProperties(prst="ltHorz")
+    # pt.graphicalProperties.solidFill = 'FF0000'  # red
+    # s5.dPt.append(pt)
 
     # cats = Reference(ws4, min_col=1, min_row=g2b_row_start, max_row=g2b_idx-1)
     cats = Reference(ws4, min_col=1, min_row=2, max_row=15)
-    p_chart.set_categories(cats)
-    # p_chart.shape = 4
-    # p_chart.y_axis.scaling.min = 0
-    # p_chart.y_axis.scaling.max = 1
-    p_chart.height = 13
-    p_chart.width = 20
+    hit_bar_chart.set_categories(cats)
+    hit_bar_chart.height = 12
+    hit_bar_chart.width = 24
+    ws4.add_chart(hit_bar_chart, 'J2')
 
-    ws4.add_chart(p_chart, 'J2')
+    # pie chart ############################################
+
+    # pie = PieChart()
+    # pie.height = 10
+    # pie.width = 13.9
+    # pie.title = "Hits by category"
+    #
+    # # labels = Reference(ws4, min_col=6, min_row=2, max_row=4)
+    # # pie.set_categories(labels)
+    #
+    #
+    # data = Reference(ws4, min_col=1, min_row=2, max_row=4)
+    # series = Series(data, title="First series of values")
+    # pie.append(series)
+    #
+    # data = Reference(ws4, min_col=2, min_row=2, max_row=4)
+    # series = Series(data, title="2nd series of values")
+    # pie.append(series)
+    #
+    # pie.add_data(data, titles_from_data=True)
+    #
+    #
+    # # Cut the first slice out of the pie
+    # # slice1 = DataPoint(idx=0, explosion=20)
+    # # pie.series[0].data_points = [slice1]
+    # ws4.add_chart(pie, "A16")
 
 
 def update_list_of_dicts(L, name, hits, opps):
@@ -1842,6 +1903,36 @@ def githash():
     return s.hexdigest()
 
 
+def test():
+    for row in range(1, 10):
+        value = ws4.cell(row=row, column=1).value = row + 5
+
+    for row in range(1, 10):
+        value2 = ws4.cell(row=row, column=2).value = row
+
+    # wb.save("SampleChart.xlsx")
+
+    # from openpyxl.charts import Reference, Series, LineChart
+
+    # setup the chart
+    chart = LineChart()
+    # chart.drawing.name = 'This is my chart'
+
+    # setup and append the first series
+    values = Reference(ws4, (1, 1), (9, 1))
+    series = Series(values, title="First series of values")
+    chart.append(series)
+
+    # setup and append the second series
+    values = Reference(ws4, (1, 2), (9, 2))
+    series = Series(values, title="Second series of values")
+    chart.append(series)
+
+    ws4.add_chart(chart)
+
+
+
+
 if __name__ == '__main__':
 
     py_common.print_with_timestamp('--- STARTED SCORING ---')
@@ -1884,6 +1975,7 @@ if __name__ == '__main__':
 
     format_workbook()
 
+
     # instanciate a suite object and get suite data
     suite_data = Suite(scaned_data_path, new_xml_path, TOOL_NAME)
 
@@ -1901,7 +1993,7 @@ if __name__ == '__main__':
     # ---------------
     collect_hit_data(suite_data)
     write_xml_data(suite_data)
-    #---------------
+    # ---------------
 
     # summary sheet
     write_summary_data(suite_data, ws1)
