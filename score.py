@@ -7,24 +7,15 @@
 import os, re, argparse, shutil, py_common, operator
 import xml.etree.ElementTree as ET
 
+from hashlib import sha1
 from time import strftime
 from suite import Suite, TestCase
-
-from openpyxl import load_workbook, drawing
-from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
-from openpyxl.chart import BarChart, LineChart, Reference, Series
-
-# from openpyxl.chart.label import DataLabelList
-# from openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 from operator import itemgetter
-from hashlib import sha1
-# from openpyxl.chart.marker import DataPoint
+from openpyxl import load_workbook
+from openpyxl.styles import Border, Side, PatternFill, Font, Alignment
+from openpyxl.chart import BarChart, LineChart
+from openpyxl.chart import PieChart, Reference
 from openpyxl.chart.series import DataPoint
-
-from openpyxl.chart import PieChart, ProjectedPieChart, Reference
-
-from openpyxl.chart.series import DataPoint
-
 
 # Global for command line argument
 normalize_juliet_false_scoring = False
@@ -136,200 +127,6 @@ def format_workbook():
     # todo consider hiding the helper columns for average
     for col in ['AC', 'AD']:
         ws1.column_dimensions[col].hidden = True
-
-
-def count_kdm_test_cases(fpr_name):
-    full_path = ""
-    beginning_of_path = ""
-    end_of_path = ""
-    found = False
-    test_cases_files = []  # reserved for alt counting approach
-    path_and_count = []
-    t_f = ""
-
-    if "\\T\\" in fpr_name:
-        t_f = "T"
-    else:
-        t_f = "F"
-
-    beginning_of_path = fpr_name.rsplit("\\", 4)[0]
-    beginning_of_path = beginning_of_path + "\\kdm\\" + t_f
-
-    dir_info = fpr_name.rsplit(".", 2)[1]
-    cwe_ = dir_info.split("_")[0] + "_"
-
-    if "123" in cwe_:
-        cwe_ = "123a_"
-
-    bin = fpr_name.rsplit("_", 1)[1][:-4]
-    depth = "Depth_" + fpr_name.rsplit("_", 2)[1]
-
-    complexity = fpr_name.rsplit("_", 4)[1]
-
-    end_of_path = "Language_C\\" + complexity + "\\" + depth + "\\" + bin
-
-    # for root,dirs,files in os.walk(path):
-    for root, dirs, files in os.walk(beginning_of_path):
-
-        for dir in dirs:
-
-            if cwe_ in dir:
-
-                full_path = beginning_of_path + "\\" + dir + "\\" + end_of_path
-
-                for path, dirs, files in os.walk(full_path):
-
-                    for file in files:
-
-                        if not file.endswith(".h") and not file.endswith("_a.c") and not file.endswith(
-                                ".obj") and file.startswith("SFP"):
-                            full_path_and_filename = os.path.join(full_path, file)
-                            test_cases_files.append(full_path_and_filename)
-                found = True
-
-        if found:
-            break
-
-    # get the total unique hits per test case
-    score = len(set(test_cases_files))
-
-    path_and_count.extend([score, full_path])
-
-    return path_and_count
-
-
-def count_juliet_test_cases(fpr_name):
-    count = 0
-    full_path = ""
-    found = False
-    test_cases = []
-    path_and_count = []
-    juliet_tc_path = ""
-    t_f = ""
-
-    # get juliet regex
-    regex = py_common.get_primary_testcase_filename_regex()
-
-    if "\\T\\" in fpr_name:
-        t_f = "T"
-    else:
-        t_f = "F"
-
-    juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
-    juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
-
-    dir_info = fpr_name.rsplit(".", 2)[1]
-    cwe_ = dir_info.split("_")[0] + "_"
-
-    if "_" in dir_info:
-        sub_dir = dir_info.split("_")[1]
-    else:
-        sub_dir = "none"
-
-    for root, dirs, files in os.walk(juliet_tc_path):
-
-        for dir in dirs:
-
-            full_path = root + "\\" + dir
-
-            if sub_dir != "none":
-                if (cwe_ in full_path) and (sub_dir in full_path):
-                    test_cases = py_common.find_files_in_dir(full_path, regex)
-                    found = True
-                    break
-
-            else:
-                if (cwe_ in full_path):
-                    test_cases = py_common.find_files_in_dir(full_path, regex)
-                    found = True
-                    break
-
-        if found:
-            break
-
-    # count juliet test cases for this project
-    for test_case in test_cases:
-        count += 1
-
-    path_and_count.extend([count, full_path])
-
-    return path_and_count
-
-
-def count_juliet_test_cases_OROGINAL(fpr_name):
-    count = 0
-    full_path = ""
-    found = False
-    test_cases = []
-    path_and_count = []
-    juliet_tc_path = ""
-    t_f = ""
-
-    # get juliet regex
-    regex = py_common.get_primary_testcase_filename_regex()
-
-    if "\\T\\" in fpr_name:
-        t_f = "T"
-    else:
-        t_f = "F"
-
-    juliet_tc_path = fpr_name.rsplit("\\", 4)[0]
-    juliet_tc_path = juliet_tc_path + "\\juliet\\" + t_f
-
-    dir_info = fpr_name.rsplit(".", 2)[1]
-    cwe_ = dir_info.split("_")[0] + "_"
-
-    if "_" in dir_info:
-        sub_dir = dir_info.split("_")[1]
-    else:
-        sub_dir = "none"
-
-    for root, dirs, files in os.walk(juliet_tc_path):
-
-        for dir in dirs:
-
-            full_path = root + "\\" + dir
-
-            if sub_dir != "none":
-                if (cwe_ in full_path) and (sub_dir in full_path):
-                    test_cases = py_common.find_files_in_dir(full_path, regex)
-                    found = True
-                    break
-
-            else:
-                if (cwe_ in full_path):
-                    test_cases = py_common.find_files_in_dir(full_path, regex)
-                    found = True
-                    break
-
-        if found:
-            break
-
-    # count juliet test cases for this project
-    for test_case in test_cases:
-        count += 1
-
-    path_and_count.extend([count, full_path])
-
-    return path_and_count
-
-
-def create_or_clean_xml_dir(xml_dir):
-    # create, or empty, 'xmls' folder
-    #
-    # Note: Deleting entire folder and then re-creating it immediately sometimes conflicts
-    # with anti-virus sortware and cannot always release handles quick enough, so the entire
-    # parent folder is not deleted, only the files withing it. This prevents this problem
-    #
-    if not os.path.exists(xml_dir):
-        py_common.print_with_timestamp("The path \"" + xml_dir + "\" does not exist")
-        py_common.print_with_timestamp("creating directory \"" + xml_dir + "\"")
-        os.makedirs(xml_dir)
-    else:
-        py_common.print_with_timestamp(xml_dir + " already exists. Cleaning before use...")
-        fileList = os.listdir(xml_dir)
-        for fileName in fileList:
-            os.remove(xml_dir + "//" + fileName)
 
 
 def paint_sheet(used_wid_list):
@@ -538,7 +335,6 @@ def calculate_test_case_percent_hits(test_case_obj):
     test_case_obj.percent = percent
 
 
-# todo 5/11/7 pick up here
 def collect_hit_data(suite_dat):
     # file name, line number, and enclosing function
     hit_data = []
@@ -582,6 +378,10 @@ def collect_hit_data(suite_dat):
     # sort hits by file name and then line number
     hit_data = sorted(hit_data, key=operator.itemgetter(3, 4))
 
+    group_hit_data(suite_dat, hit_data)
+
+
+def group_hit_data(suite_dat, hit_data):
     ##############################
     # todo: 5/9/7 new, create new function here
 
