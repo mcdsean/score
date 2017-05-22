@@ -19,6 +19,7 @@ from openpyxl.chart import BarChart, LineChart, Reference, Series
 from operator import itemgetter
 from hashlib import sha1
 # from openpyxl.chart.marker import DataPoint
+from openpyxl.chart.series import DataPoint
 
 from openpyxl.chart import PieChart, ProjectedPieChart, Reference
 
@@ -623,7 +624,11 @@ def collect_hit_data(suite_dat):
     for idx, title in enumerate(hit_analytics_titles):
         set_appearance(ws4, 1, idx + 1, 'fg_fill', 'C9C9C9')
         ws4.cell(row=1, column=idx + 1).value = title
-        ws4.cell(row=1, column=idx + 1).alignment = Alignment(horizontal="center")
+        ws4.cell(row=1, column=4).alignment = Alignment(horizontal="center")
+        if idx > 4:
+            ws4.cell(row=1, column=idx).alignment = Alignment(horizontal="center")
+            ws4.cell(row=2, column=idx).alignment = Alignment(horizontal="center")
+            ws4.cell(row=3, column=idx).alignment = Alignment(horizontal="center")
 
     # write to 'hit analytics' summary sheet
     for idx, hits1 in enumerate(list_of_dicts):
@@ -672,18 +677,32 @@ def collect_hit_data(suite_dat):
 
 
     # merge and align cells
-    for col_idx, hits1 in enumerate(list_of_dicts):
-        if col_idx > 5:
-            ws4.merge_cells(start_row=b2g_row_start, start_column=col_idx, end_row=b2g_row_start + b2g_idx - 1,
-                            end_column=col_idx)
-            ws4.merge_cells(start_row=g2b_row_start, start_column=col_idx, end_row=g2b_row_start + g2b_idx - 1,
-                            end_column=col_idx)
-            ws4.cell(row=b2g_row_start, column=col_idx).alignment = Alignment(horizontal="center", vertical='center')
-            ws4.cell(row=g2b_row_start, column=col_idx).alignment = Alignment(horizontal="center", vertical='center')
+    for col_idx, row in enumerate(hit_analytics_titles):
+        if col_idx > 4:
+            # todo 5/22/7 new
+            ws4.cell(row=1 + 1, column=10).value = ws4.cell(row=1, column=6).value
+            ws4.cell(row=2 + 1, column=10).value = ws4.cell(row=2, column=6).value
+            ws4.cell(row=3 + 1, column=10).value = ws4.cell(row=3, column=6).value
+            ws4.cell(row=b2g_row_start + 1, column=10).value = ws4.cell(row=b2g_row_start, column=6).value
+            ws4.cell(row=b2g_row_start + 1 + 1, column=10).value = ws4.cell(row=g2b_row_start, column=6).value
+
+            ws4.cell(row=1 + 1, column=11).value = ws4.cell(row=1, column=8).value
+            ws4.cell(row=2 + 1, column=11).value = ws4.cell(row=2, column=8).value
+            ws4.cell(row=3 + 1, column=11).value = ws4.cell(row=3, column=8).value
+            ws4.cell(row=b2g_row_start + 1, column=11).value = ws4.cell(row=b2g_row_start, column=8).value
+            ws4.cell(row=b2g_row_start + 1 + 1, column=11).value = ws4.cell(row=g2b_row_start, column=8).value
+
+            ws4.merge_cells(start_row=b2g_row_start, start_column=col_idx + 1, end_row=b2g_row_start + b2g_idx - 1,
+                            end_column=col_idx + 1)
+            ws4.merge_cells(start_row=g2b_row_start, start_column=col_idx + 1, end_row=g2b_row_start + g2b_idx - 1,
+                            end_column=col_idx + 1)
+            ws4.cell(row=b2g_row_start, column=col_idx + 1).alignment = Alignment(horizontal="center",
+                                                                                  vertical='center')
+            ws4.cell(row=g2b_row_start, column=col_idx + 1).alignment = Alignment(horizontal="center", vertical='center')
 
     # color cells
     for idx, hits1 in enumerate(list_of_dicts):
-        ws4.cell(row=idx + 2, column=4).alignment = Alignment(horizontal="center", vertical='center')
+        ws4.cell(row=idx + 2, column=4).alignment = Alignment(horizontal="right", vertical='center')
         ws4.cell(row=idx + 2, column=5).alignment = Alignment(horizontal="center", vertical='center')
         ws4.cell(row=idx + 2, column=6).alignment = Alignment(horizontal="center", vertical='center')
         # todo: consolidate these coloring methods
@@ -733,6 +752,7 @@ def collect_hit_data(suite_dat):
 
 
 def create_hit_charts(g2b_idx, g2b_row_start):
+
     hit_bar_chart = BarChart(gapWidth=50)
 
     hit_bar_chart.type = "col"
@@ -742,7 +762,6 @@ def create_hit_charts(g2b_idx, g2b_row_start):
     hit_bar_chart.title = 'Function Hits vs. Opportunities (Juliet/False Only)'
     hit_bar_chart.y_axis.title = 'Total Hits per Group'
 
-    # g2b_data = Reference(ws4, min_col=2, min_row=8, max_row=15, max_col=3)
     g2b_data = Reference(ws4, min_col=2, min_row=1, max_row=15, max_col=2)
     hit_bar_chart.add_data(g2b_data, titles_from_data=True)
 
@@ -751,12 +770,10 @@ def create_hit_charts(g2b_idx, g2b_row_start):
 
     s5 = hit_bar_chart.series[0]
     s5.graphicalProperties.line.solidFill = '000000'
-    # s5.graphicalProperties.solidFill = '4572A7'  # dark blue
     s5.graphicalProperties.solidFill = 'C5E0B4'  # light green
 
     s5 = hit_bar_chart.series[1]
     s5.graphicalProperties.line.solidFill = '000000'
-    # s5.graphicalProperties.solidFill = '93A9CF'  # light blue
     s5.graphicalProperties.solidFill = 'F8CBAD'  # light orange
 
     # pt = DataPoint(idx=7) todo: keep this for coloring the groups!
@@ -764,39 +781,38 @@ def create_hit_charts(g2b_idx, g2b_row_start):
     # pt.graphicalProperties.solidFill = 'FF0000'  # red
     # s5.dPt.append(pt)
 
-    # cats = Reference(ws4, min_col=1, min_row=g2b_row_start, max_row=g2b_idx-1)
     cats = Reference(ws4, min_col=1, min_row=2, max_row=15)
     hit_bar_chart.set_categories(cats)
     hit_bar_chart.height = 12
     hit_bar_chart.width = 24
     ws4.add_chart(hit_bar_chart, 'J2')
 
-    # pie chart ############################################
+    # Groups chart
+    pie = PieChart()
+    pie.height = 10
+    pie.width = 13.9
+    pie.title = "Hits by Group"
 
-    # pie = PieChart()
-    # pie.height = 10
-    # pie.width = 13.9
-    # pie.title = "Hits by category"
-    #
-    # # labels = Reference(ws4, min_col=6, min_row=2, max_row=4)
-    # # pie.set_categories(labels)
-    #
-    #
-    # data = Reference(ws4, min_col=1, min_row=2, max_row=4)
-    # series = Series(data, title="First series of values")
-    # pie.append(series)
-    #
-    # data = Reference(ws4, min_col=2, min_row=2, max_row=4)
-    # series = Series(data, title="2nd series of values")
-    # pie.append(series)
-    #
-    # pie.add_data(data, titles_from_data=True)
-    #
-    #
-    # # Cut the first slice out of the pie
-    # # slice1 = DataPoint(idx=0, explosion=20)
-    # # pie.series[0].data_points = [slice1]
-    # ws4.add_chart(pie, "A16")
+    labels = Reference(ws4, min_col=10, min_row=3, max_row=6)
+    # data = Reference(ws4, min_col=11, max_col =12, min_row=2, max_row=6)
+    data = Reference(ws4, min_col=11, min_row=2, max_row=6)
+    pie.add_data(data, titles_from_data=True)
+    pie.set_categories(labels)
+
+    # color the slices
+    s55 = pie.series[0]
+    pt = DataPoint(idx=2)
+    # todo keep for now as reference
+    # pt.graphicalProperties.line.solidFill = 'FFFFFF' # white
+    pt.graphicalProperties.solidFill = 'BFBFBF'  # gray
+    s55.dPt.append(pt)
+
+    # todo keep for now as reference
+    # Cut the first slice out of the pie
+    # slice = DataPoint(idx=0, explosion=20)
+    # pie.series[0].data_points = [slice]
+
+    ws4.add_chart(pie, "A16")
 
 
 def update_list_of_dicts(L, name, hits, opps):
@@ -1903,36 +1919,6 @@ def githash():
     return s.hexdigest()
 
 
-def test():
-    for row in range(1, 10):
-        value = ws4.cell(row=row, column=1).value = row + 5
-
-    for row in range(1, 10):
-        value2 = ws4.cell(row=row, column=2).value = row
-
-    # wb.save("SampleChart.xlsx")
-
-    # from openpyxl.charts import Reference, Series, LineChart
-
-    # setup the chart
-    chart = LineChart()
-    # chart.drawing.name = 'This is my chart'
-
-    # setup and append the first series
-    values = Reference(ws4, (1, 1), (9, 1))
-    series = Series(values, title="First series of values")
-    chart.append(series)
-
-    # setup and append the second series
-    values = Reference(ws4, (1, 2), (9, 2))
-    series = Series(values, title="Second series of values")
-    chart.append(series)
-
-    ws4.add_chart(chart)
-
-
-
-
 if __name__ == '__main__':
 
     py_common.print_with_timestamp('--- STARTED SCORING ---')
@@ -1974,7 +1960,6 @@ if __name__ == '__main__':
     ws6 = wb.create_sheet('TEMP', 5)
 
     format_workbook()
-
 
     # instanciate a suite object and get suite data
     suite_data = Suite(scaned_data_path, new_xml_path, TOOL_NAME)
