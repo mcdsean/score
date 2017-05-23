@@ -651,6 +651,8 @@ def write_hit_data(suite_dat, hit_data):
             # write hit data to cells in ws3
             ws3.cell(row=row + 1, column=col).value = cell
 
+            # todo 5/23/7 the following formatting slows writing down considerably and is partiallly redundant. Needs addressed
+
             # set the alignment based on column
             if col in horizontal_left:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
