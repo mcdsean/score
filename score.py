@@ -531,14 +531,10 @@ def group_hit_data(suite_dat, hit_data):
                     set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FFFFFF')  # white
 
         ###########
-        ws4.cell(row=idx + 2, column=2).number_format = '#,##0'
-        ws4.cell(row=idx + 2, column=3).number_format = '#,##0'
-        ws4.cell(row=idx + 2, column=4).number_format = '#,##0'
-        ws4.cell(row=idx + 2, column=7).number_format = '#,##0'
-        ws4.cell(row=idx + 2, column=8).number_format = '#,##0'
+        for i in range(2, 9):
+            ws4.cell(row=idx + 2, column=i).number_format = '#,##0'
 
     create_hit_charts(g2b_idx, g2b_row_start)
-
 
     print('Writing hit data to sheet ... please stand by, thank you for your patience!')
     write_hit_data(suite_dat, hit_data)
