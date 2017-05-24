@@ -735,7 +735,7 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                     #  gray - file name and line combo are not unique if
                     #  previous sorted value is identical to this sample
                     for hit_idx, item in enumerate(hit):
-                        if hit_idx < 9:  # todo: NEW 5/4/7
+                        if hit_idx < 9:
                             # adjust current row
                             set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
                             # adjust previous row
@@ -744,7 +744,7 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                 else:
                     # blue - unique file name and line number
                     for hit_idx, item in enumerate(hit):
-                        if hit_idx < 9:  # todo: NEW 5/4/7
+                        if hit_idx < 9:
                             # adjust current row
                             set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'BDD7EE')  # light blue
 
