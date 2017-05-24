@@ -128,12 +128,6 @@ def format_workbook():
         ws1.column_dimensions[col].hidden = True
 
 
-def paint_sheet(used_wid_list):
-    for wid in used_wid_list:
-        ws = wb['Weakness IDs']
-        set_appearance(ws, 3, 3, 'fg_fill', 'F4B084')
-
-
 def get_schemas(suite_dat):
     schemas = {}
     weakness_id_schemas = []
@@ -398,8 +392,8 @@ def group_hit_data(suite_dat, hit_data):
     good_data_unique = remove_dups(good_data)
 
     for idx, data_unique in enumerate(good_data_unique):
-        for idx1, cell_dat in enumerate(data_unique):
-            ws6.cell(row=idx + 1, column=idx1 + 1).value = data_unique[idx1]  # todo: temp for debug
+        # for idx1, cell_dat in enumerate(data_unique):
+        #     ws6.cell(row=idx + 1, column=idx1 + 1).value = data_unique[idx1]  # todo: temp for debug
 
         # name of containing function
         name = data_unique[5]
@@ -650,21 +644,15 @@ def write_hit_data(suite_dat, hit_data):
             # write hit data to cells in ws3
             ws3.cell(row=row + 1, column=col).value = cell
 
-            #######################################################################################################
-            # todo 5/23/7 the following formatting slows writing down considerably and is partiallly redundant. Needs addressed
-
             # set the alignment based on column
-            if col in horizontal_left:
-                ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="left", vertical='center')
-            elif col in horizontal_right:
+            if col in horizontal_right:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="right", vertical='center')
-            else:
+            elif col not in horizontal_left:
                 ws3.cell(row=row + 1, column=col).alignment = Alignment(horizontal="center", vertical='center')
 
-            # todo: this may be redundant with cells already being written to? make more effiecient?
-            # put border around all cells that are written to
-            set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')  # white
-            #######################################################################################################
+            # put border around non-opp cells; they will be formated later
+            if col < 10:
+                set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')  # white
 
             col += 1
 
@@ -782,78 +770,6 @@ def import_xml_tags(suite_dat):
         row += 1
 
     setattr(suite_dat, 'tag_info', tag_ids)
-
-
-def get_opp_counts_per_test_case(juliet_test_case_path):
-    opp_counts = {}
-
-    # for root, dirs, files in os.walk(juliet_tc_path_f):
-    for root, dirs, files in os.walk(juliet_test_case_path):
-
-        for file in files:
-            opp_count = 0
-            if file.endswith(".c"):
-                with open(os.path.join(root, file), 'r') as inF:
-                    for line in inF:
-                        if 'FIX' in line:
-                            opp_count += 1
-                            # todo: need to get the line number
-
-                            # $$$$$$$$$$$$$$$$$$$
-                            # with open(filename) as myFile:
-                            #     for num, line in enumerate(myFile, 1):
-                            #         if lookup in line:
-                            #             print
-                            #             'found at line:', num
-                            # $$$$$$$$$$$$$$$$$$$$
-
-                # get test case name by removing variant and file extension
-                test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-                test_case_full_path = os.path.join(root, test_case_name)
-
-                # if test case name not in the list, add it
-                if opp_counts.get(test_case_full_path, 'None') == 'None':
-                    opp_counts.update({test_case_full_path: opp_count})
-
-                # if test case name is in the list, add this new value to the existing value
-                else:
-                    current_value = opp_counts[test_case_full_path]
-                    updated_value = opp_count + current_value
-                    opp_counts.update({test_case_full_path: updated_value})
-
-    # return opp counts by test case name
-    return opp_counts  # todo: consider sorting these for speed?
-
-
-def get_opp_counts_per_file(file_path):
-    opp_counts = {}
-
-    for root, dirs, files in os.walk(file_path):
-
-        for file in files:
-            opp_count = 0
-            if file.endswith(".c"):
-                with open(root + "\\" + file, 'r') as inF:
-                    for line in inF:
-                        # if 'FIX' in line:
-                        # if line.lstrip().startswith('good') and line.endswith(''):
-                        if line.lstrip().startswith('good') and line.rstrip().endswith('();'):
-                            opp_count += 1
-                            print('LINE============', line, 'in=======', file)
-                            # todo: this works. do it for only files that hit?
-                # test_case_name = re.sub("[a-z]?\.\w+$", "", file)
-
-                # testcase name and opp count to list or update if already there
-                if opp_counts.get(file, 'None') == 'None':
-                    opp_counts.update({file: opp_count})
-                else:
-                    current_value = opp_counts[file]
-                    updated_value = opp_count + current_value
-                    opp_counts.update({file: updated_value})
-                    # print("updated_value", file, updated_value)
-
-    # return opp counts by test case name
-    return opp_counts  # consider sorting these for speed?
 
 
 def remove_dups(d):
@@ -1551,17 +1467,6 @@ def create_score_charts():
     #####################
 
 
-def dedup_multi_dim_list(mylist):
-    seen = set()
-    newlist = []
-    for item in mylist:
-        t = tuple(item)
-        if t not in seen:
-            newlist.append(item)
-            seen.add(t)
-    return newlist
-
-
 def import_weakness_ids(suite_dat):
     # todo: consider consolidating this function with 'import_xml_tags'
     row = 0
@@ -1595,14 +1500,6 @@ def import_weakness_ids(suite_dat):
             if weakness_id[0] == cwe_num:
                 setattr(xml_project, 'acceptable_weakness_ids', weakness_id)
                 break
-
-
-def remove_duplicates(numbers):
-    newlist = []
-    for number in numbers:
-        if number not in newlist:
-            newlist.append(number)
-    return newlist
 
 
 def paint_wids_usage(used_wids, unused_wids):
@@ -1747,7 +1644,7 @@ if __name__ == '__main__':
     ws3 = wb.create_sheet('Hit Data', 2)
     ws4 = wb.create_sheet('Hit Analytics', 3)
     ws5 = wb.create_sheet('SCORE', 4)
-    ws6 = wb.create_sheet('TEMP', 5)
+    # ws6 = wb.create_sheet('TEMP', 5)
 
     format_workbook()
 
