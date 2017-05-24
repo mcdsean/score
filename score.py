@@ -74,7 +74,6 @@ def format_workbook():
     ws3.column_dimensions['L'].width = 12
     ws3.column_dimensions['M'].width = 12
     ws3.sheet_view.zoomScale = 70
-    ws3.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws3.sheet_view.showGridLines = False
     # freeze first row and column
     ws3.freeze_panes = ws3['A2']
@@ -651,6 +650,7 @@ def write_hit_data(suite_dat, hit_data):
             # write hit data to cells in ws3
             ws3.cell(row=row + 1, column=col).value = cell
 
+            #######################################################################################################
             # todo 5/23/7 the following formatting slows writing down considerably and is partiallly redundant. Needs addressed
 
             # set the alignment based on column
@@ -663,14 +663,14 @@ def write_hit_data(suite_dat, hit_data):
 
             # todo: this may be redundant with cells already being written to? make more effiecient?
             # put border around all cells that are written to
-            set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')
+            set_appearance(ws3, row + 1, col, 'fg_fill', 'FFFFFF')  # white
+            #######################################################################################################
 
             col += 1
 
         # identify the duplicate files #todo: maybe do this when they come in? are they in order though?
         if hit[3] in file_seen:
             file_name_dups.append(hit[3])
-            #ws3.cell(row=row, column=4).value = hit[0]  # todo: DEBUG code, delete when thru
         else:
             file_seen.add(hit[3])
 
@@ -717,60 +717,48 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
             # d.
             next_group_idx = idx + group_size
 
+            # todo: 5/4/17 skip merge if group size=1?
             # merge cells into test case groups
-            # todo: 5/4/17 skip merge if group size=1
-            # todo: 5/4/17 do for juliet false only?
-            ws3.merge_cells(start_row=start, start_column=7, end_row=end, end_column=7)
-            ws3.merge_cells(start_row=start, start_column=8, end_row=end, end_column=8)
-            ws3.merge_cells(start_row=start, start_column=9, end_row=end, end_column=9)
-            ws3.merge_cells(start_row=start, start_column=10, end_row=end, end_column=10)
-            ws3.merge_cells(start_row=start, start_column=11, end_row=end, end_column=11)
-            ws3.merge_cells(start_row=start, start_column=12, end_row=end, end_column=12)
-            ws3.merge_cells(start_row=start, start_column=13, end_row=end, end_column=13)
+            for i in range(7, 14):
+                ws3.merge_cells(start_row=start, start_column=i, end_row=end, end_column=i)
 
             # look thru all four possible opportunities
             for idx1, item in enumerate(found_ops_in_group):
-                # red
+                # opp not found = red
                 for a in range(start, start + group_size):
-                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'FFC7CE')
-                # gray
+                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'FFC7CE')  # red
+                # no opp = gray
                 if not len(item):
                     for a in range(start, start + group_size):
-                        set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'D9D9D9')
-
+                        set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'D9D9D9')  # gray
+        # opp found = green
         for idx1, item in enumerate(found_ops_in_group):
-            # green
             if item in hit[5] and len(item) > 0:
                 for a in range(start, start + group_size):
-                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'A9D08E')
+                    set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'A9D08E')  # green
 
-    # todo: 5/5/17 this needs optimized and probably put into existing loop above or better approach
-    # highlight duplicates found in the list
-    for hit in hit_data:
-
+        # todo: 5/23/7 this needs optimized
         for dup_file_name in file_name_dups:
 
             # if file name is a duplicate, highlight it's row
             if hit[3] == dup_file_name:
 
-                # if previous_file_name_and_line == list(hit[:2]):
                 if previous_file_name_and_line == list(hit[3:5]):
-                    #  gray - file name an line combo are not unique if
+                    #  gray - file name and line combo are not unique if
                     #  previous sorted value is identical to this sample
-                    for idx, item in enumerate(hit):
-                        if idx < 9:  # todo: NEW 5/4/17
+                    for hit_idx, item in enumerate(hit):
+                        if hit_idx < 9:  # todo: NEW 5/4/7
                             # adjust current row
-                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'FFD966')
-
+                            set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
                             # adjust previous row
-                            set_appearance(ws3, row, idx + 1, 'fg_fill', 'FFD966')
+                            set_appearance(ws3, row, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
 
                 else:
                     # blue - unique file name and line number
-                    for idx, item in enumerate(hit):
-                        if idx < 9:  # todo: NEW 5/4/17
+                    for hit_idx, item in enumerate(hit):
+                        if hit_idx < 9:  # todo: NEW 5/4/7
                             # adjust current row
-                            set_appearance(ws3, row + 1, idx + 1, 'fg_fill', 'BDD7EE')
+                            set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'BDD7EE')  # light blue
 
                 previous_file_name_and_line = list(hit[3:5])
 
