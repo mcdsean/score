@@ -655,6 +655,10 @@ def write_hit_data(suite_dat, hit_data):
         # identify the duplicate files #todo: maybe do this when they come in? are they in order though?
         if hit[3] in file_seen:
             file_name_dups.append(hit[3])
+            #############################
+            # todo: new 06/7/17
+            suite_dat.duplicate_file_name_hits.add(hit[3])
+            #############################
         else:
             file_seen.add(hit[3])
 
@@ -722,35 +726,26 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
                     set_appearance(ws3, a, idx1 + 10, 'fg_fill', 'A9D08E')  # green
 
         # todo: 5/23/7 this needs optimized
-        for dup_file_name in file_name_dups:
+        if hit[3] in suite_dat.duplicate_file_name_hits:
 
-            ############################
-            # todo 06/07/17 debug code
-            if 'CWE401_Memory_Leak__int64_t_realloc_16.c' in hit[3] and '50' in hit[4]:
-                print(hit[3])
-            ############################
+            if previous_file_name_and_line == list(hit[3:5]):
+                #  yellow - repeat file name and line
+                #  previous sorted file name and line are identical to this hit
+                for hit_idx, item in enumerate(hit):
+                    if hit_idx < 9:
+                        # adjust current row
+                        set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
+                        # adjust previous row
+                        set_appearance(ws3, row, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
 
-            # if file name is a duplicate, highlight it's row
-            if hit[3] == dup_file_name:
+            else:
+                # blue - unique file name and line number
+                for hit_idx, item in enumerate(hit):
+                    if hit_idx < 9:
+                        # adjust current row
+                        set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'BDD7EE')  # light blue
 
-                if previous_file_name_and_line == list(hit[3:5]):
-                    #  gray - file name and line combo are not unique if
-                    #  previous sorted value is identical to this sample
-                    for hit_idx, item in enumerate(hit):
-                        if hit_idx < 9:
-                            # adjust current row
-                            set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
-                            # adjust previous row
-                            set_appearance(ws3, row, hit_idx + 1, 'fg_fill', 'FFD966')  # yellow
-
-                else:
-                    # blue - unique file name and line number
-                    for hit_idx, item in enumerate(hit):
-                        if hit_idx < 9:
-                            # adjust current row
-                            set_appearance(ws3, row + 1, hit_idx + 1, 'fg_fill', 'BDD7EE')  # light blue
-
-                previous_file_name_and_line = list(hit[3:5])
+            previous_file_name_and_line = list(hit[3:5])
 
         row += 1
 

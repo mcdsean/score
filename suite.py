@@ -20,12 +20,12 @@ class TestCase(object):
         ''' runtime attributes '''
         # FILE NAME, LINE, FUNCTION
         self.hit_data = []
+
         '''
-         Level     FILE NAME   FUNCTION    LINE
-           3           x           x         x
-           2           x           x
-           1           x
-           0
+         Level     FILE NAME   LINE     COLOR
+           2           x         x      Blue  
+           1           x                Yellow
+           0                            White (Unique)
         '''
         # todo: for coloring, need to develop. currently works as is but needs to be more efficient
         self.hit_data_match_levels = {}
@@ -174,6 +174,8 @@ class Suite(object):
         # todo 5/11/7 default these to 'FAIL' and ' .... does require manual review
         self.manual_review_recommendataion = ' * There are no test cases requiring manual review!'
         self.pass_fail = 'PASS'
+
+        self.duplicate_file_name_hits = set()
 
         self.clear_totals()
         ''' auto-run methods on creation '''
