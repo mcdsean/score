@@ -724,6 +724,12 @@ def format_hit_data(suite_dat, hit_data, file_name_dups):
         # todo: 5/23/7 this needs optimized
         for dup_file_name in file_name_dups:
 
+            ############################
+            # todo 06/07/17 debug code
+            if 'CWE401_Memory_Leak__int64_t_realloc_16.c' in hit[3] and '50' in hit[4]:
+                print(hit[3])
+            ############################
+
             # if file name is a duplicate, highlight it's row
             if hit[3] == dup_file_name:
 
