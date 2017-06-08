@@ -23,6 +23,7 @@ normalize_juliet_false_scoring = False
 TOOL_NAME = 'fortify'
 XML_OUTPUT_DIR = 'xmls'
 WID_DELIMITER_FORTIFY = ':'
+LANG = 'c'
 
 def format_workbook():
     hit_sheet_titles = ['CWE', 'Type', 'T/F', 'File Name', 'Line #', 'Function', 'SCORE', 'Opps', '%', 'Opportunities']
@@ -215,7 +216,13 @@ def score_xmls(suite_dat):
             del wid_pieces_that_hit[:]
 
             # 2. get relative path/filename and line number for this row in this xml
-            file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
+
+            try:
+                file_path = vuln.find(schemas['file_name_schema'], ns).attrib[schemas['file_name_attrib']]
+            except AttributeError:
+                print('Hit Has No Path:', xml_path)
+                continue
+
             # exclude support files
             if not file_path.startswith('T/') and not file_path.startswith('F/'):
                 continue
@@ -376,7 +383,6 @@ def collect_hit_data(suite_dat):
 
 def group_hit_data(suite_dat, hit_data):
     ##############################
-    # todo: 5/9/7 new, create new function here
 
     list_of_dicts = []
 
@@ -530,7 +536,7 @@ def group_hit_data(suite_dat, hit_data):
                 else:
                     set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FFFFFF')  # white
 
-        ############
+        #############
         for i in range(2, 9):
             ws4.cell(row=idx + 2, column=i).number_format = '#,##0'
 
@@ -1625,7 +1631,8 @@ if __name__ == '__main__':
 
     # create scorecard from vendor input file
     time = strftime('scorecard-fortify-c_%m-%d-%Y_%H.%M.%S' + '_suite_' + str(suite_number).zfill(2))
-    vendor_input = os.path.join(suite_path, 'vendor-input-' + TOOL_NAME + '-c.xlsx')
+    # vendor_input = os.path.join(suite_path, 'vendor-input-' + TOOL_NAME + '-c.xlsx')
+    vendor_input = os.path.join(suite_path, 'vendor-input-' + TOOL_NAME + '-' + LANG + '.xlsx')
     scorecard = os.path.join(suite_path, time) + '.xlsx'
     shutil.copyfile(vendor_input, scorecard)
 
