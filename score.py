@@ -530,7 +530,7 @@ def group_hit_data(suite_dat, hit_data):
                 else:
                     set_appearance(ws4, idx + 2, col_idx + 1, 'fg_fill', 'FFFFFF')  # white
 
-        ###########
+        ############
         for i in range(2, 9):
             ws4.cell(row=idx + 2, column=i).number_format = '#,##0'
 

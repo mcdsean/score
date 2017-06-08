@@ -20,7 +20,6 @@ class TestCase(object):
         ''' runtime attributes '''
         # FILE NAME, LINE, FUNCTION
         self.hit_data = []
-
         '''
          Level     FILE NAME   LINE     COLOR
            2           x         x      Blue  
